@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:smart_study_buddy/main.dart';
 import 'signup_screen.dart';
-import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,8 +21,6 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = '';
     });
 
-    // Firebase Auth will be connected here by Member 4
-    // For now we simulate a login
     Future.delayed(const Duration(seconds: 1), () {
       setState(() {
         _isLoading = false;
@@ -35,7 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          MaterialPageRoute(builder: (context) => const MainNavigation()),
         );
       }
     });
@@ -78,7 +76,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              const Text('Email', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('Email',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               TextField(
                 controller: _emailController,
@@ -92,7 +91,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text('Password', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('Password',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               TextField(
                 controller: _passwordController,
@@ -126,7 +126,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Log In', style: TextStyle(fontSize: 16)),
+                      : const Text('Log In',
+                      style: TextStyle(fontSize: 16)),
                 ),
               ),
               const SizedBox(height: 20),
