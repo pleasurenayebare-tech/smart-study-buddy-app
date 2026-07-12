@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/groups_screen.dart';
 import 'screens/profile_screen.dart';
@@ -19,7 +20,7 @@ class SmartStudyBuddy extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1F4E79)),
         useMaterial3: true,
       ),
-      home: const MainNavigation(),
+      home: const LoginScreen(),
     );
   }
 }
