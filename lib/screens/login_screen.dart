@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_study_buddy/main.dart';
-import 'package:smart_study_buddy/firebase_service.dart';
 import 'signup_screen.dart';
 
-// ########################################################
-// # Login screen
-// # Allows email or verified username login.
-// ########################################################
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -15,9 +11,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailOrUsernameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final FirebaseService _firebaseService = FirebaseService();
   bool _isLoading = false;
   String _errorMessage = '';
 
@@ -27,10 +22,10 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = '';
     });
 
-    final input = _emailOrUsernameController.text.trim();
-    final password = _passwordController.text;
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
 
-    if (input.isEmpty || password.isEmpty) {
+    if (email.isEmpty || password.isEmpty) {
       setState(() {
         _errorMessage = 'Please fill in all fields.';
         _isLoading = false;
@@ -38,24 +33,34 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    final result = await _firebaseService.login(
-      emailOrUsername: input,
-      password: password,
-    );
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-    if (result != null) {
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainNavigation()),
+      );
+    } on FirebaseAuthException catch (e) {
       setState(() {
-        _errorMessage = result;
         _isLoading = false;
+        if (e.code == 'user-not-found') {
+          _errorMessage = 'No account found with this email.';
+        } else if (e.code == 'wrong-password') {
+          _errorMessage = 'Incorrect password. Please try again.';
+        } else {
+          _errorMessage = e.message ?? 'Login failed. Please try again.';
+        }
       });
-      return;
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Something went wrong. Please try again.';
+      });
     }
-
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const MainNavigation()),
-    );
   }
 
   @override
@@ -90,22 +95,23 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 8),
               const Center(
                 child: Text(
-                  'Welcome back! Log in with email or verified username.',
+                  'Welcome back! Log in to continue.',
                   style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
               ),
               const SizedBox(height: 40),
-              const Text('Email or Username',
+              const Text('Email',
                   style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               TextField(
-                controller: _emailOrUsernameController,
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
-                  hintText: 'Enter your email or username',
+                  hintText: 'Enter your email',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  prefixIcon: const Icon(Icons.person_outline),
+                  prefixIcon: const Icon(Icons.email_outlined),
                 ),
               ),
               const SizedBox(height: 16),
@@ -145,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : const Text('Log In',
-                      style: TextStyle(fontSize: 16)),
+                          style: TextStyle(fontSize: 16)),
                 ),
               ),
               const SizedBox(height: 20),
