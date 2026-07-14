@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'theme.dart';
 import 'screens/login_screen.dart';
+import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/groups_screen.dart';
 import 'screens/profile_screen.dart';
@@ -28,6 +29,7 @@ class SmartStudyBuddy extends StatelessWidget {
       title: 'Smart Study Buddy',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.getThemeData(),
+      home: const SplashScreen(),
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
