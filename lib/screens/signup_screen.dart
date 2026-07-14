@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:smart_study_buddy/firebase_service.dart';
 import 'login_screen.dart';
 
+// ########################################################
+// # Signup screen
+// # Create a new user account with a verified username.
+// ########################################################
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
@@ -10,42 +15,74 @@ class SignupScreen extends StatefulWidget {
 
 class _SignupScreenState extends State<SignupScreen> {
   final _nameController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _bioController = TextEditingController();
+  final FirebaseService _firebaseService = FirebaseService();
   bool _isLoading = false;
   String _errorMessage = '';
 
-  void _signup() {
+  Future<void> _signup() async {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
 
-    // Firebase Auth will be connected here by Member 4
-    Future.delayed(const Duration(seconds: 1), () {
+    final fullName = _nameController.text.trim();
+    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final bio = _bioController.text.trim();
+
+    if (fullName.isEmpty || username.isEmpty || email.isEmpty || password.isEmpty) {
       setState(() {
+        _errorMessage = 'Please fill in all required fields.';
         _isLoading = false;
       });
+      return;
+    }
 
-      if (_nameController.text.isEmpty ||
-          _emailController.text.isEmpty ||
-          _passwordController.text.isEmpty) {
-        setState(() {
-          _errorMessage = 'Please fill in all fields.';
-        });
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Account created! Please log in.'),
-            backgroundColor: Color(0xFF1F4E79),
-          ),
-        );
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
-      }
+    final usernamePattern = RegExp(r'^[a-zA-Z0-9_]{4,20}$');
+    if (!usernamePattern.hasMatch(username)) {
+      setState(() {
+        _errorMessage = 'Username must be 4-20 characters and may include underscores.';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    final result = await _firebaseService.signUp(
+      fullName: fullName,
+      username: username,
+      email: email,
+      password: password,
+      bio: bio.isEmpty ? null : bio,
+    );
+
+    if (result != null) {
+      setState(() {
+        _errorMessage = result;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = false;
     });
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Account created! Please verify your email before logging in.'),
+        backgroundColor: Color(0xFF1F4E79),
+      ),
+    );
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+    );
   }
 
   @override
@@ -98,6 +135,19 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              const Text('Username', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _usernameController,
+                decoration: InputDecoration(
+                  hintText: 'Choose a verified username',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  prefixIcon: const Icon(Icons.alternate_email),
+                ),
+              ),
+              const SizedBox(height: 16),
               const Text('Email', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               TextField(
@@ -123,6 +173,20 @@ class _SignupScreenState extends State<SignupScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   prefixIcon: const Icon(Icons.lock_outline),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('Bio (optional)', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: _bioController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Share a bit about yourself',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  prefixIcon: const Icon(Icons.info_outline),
                 ),
               ),
               const SizedBox(height: 12),

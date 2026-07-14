@@ -8,32 +8,71 @@ class FirebaseService {
   // Firestore instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // ══════════════════════════════════════
-  // AUTHENTICATION METHODS
-  // ══════════════════════════════════════
+  // Users collection reference
+  final CollectionReference<Map<String, dynamic>> _usersRef =
+      FirebaseFirestore.instance.collection('users');
+
+  // ########################################################
+  // # AUTHENTICATION METHODS
+  // ########################################################
 
   // Get current logged in user
   User? get currentUser => _auth.currentUser;
 
-  // Sign up with email and password
+  // Check if a username is unique in Firestore
+  Future<bool> isUsernameUnique(String username) async {
+    final querySnapshot = await _usersRef
+        .where('username', isEqualTo: username.toLowerCase().trim())
+        .get();
+    return querySnapshot.docs.isEmpty;
+  }
+
+  // Find a user document by username
+  Future<DocumentSnapshot<Map<String, dynamic>>?> getUserByUsername(
+      String username) async {
+    final querySnapshot = await _usersRef
+        .where('username', isEqualTo: username.toLowerCase().trim())
+        .get();
+    if (querySnapshot.docs.isEmpty) return null;
+    return querySnapshot.docs.first;
+  }
+
+  // Sign up with email, password, and a verified username
   Future<String?> signUp({
     required String fullName,
+    required String username,
     required String email,
     required String password,
+    String? bio,
   }) async {
     try {
+      final normalizedUsername = username.toLowerCase().trim();
+      if (!await isUsernameUnique(normalizedUsername)) {
+        return 'That username is already taken. Please choose another one.';
+      }
+
       UserCredential result = await _auth.createUserWithEmailAndPassword(
-        email: email,
+        email: email.trim(),
         password: password,
       );
 
-      // Save user details to Firestore
-      await _firestore.collection('users').doc(result.user!.uid).set({
-        'uid': result.user!.uid,
-        'fullName': fullName,
-        'email': email,
+      final user = result.user;
+      if (user == null) {
+        return 'Unable to create account. Please try again.';
+      }
+
+      await user.sendEmailVerification();
+
+      await _usersRef.doc(user.uid).set({
+        'uid': user.uid,
+        'fullName': fullName.trim(),
+        'username': normalizedUsername,
+        'email': email.trim(),
+        'bio': bio?.trim() ?? 'Student focused on collaborative learning.',
         'joinedGroups': [],
         'uploadCount': 0,
+        'emailVerified': user.emailVerified,
+        'usernameVerified': false,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -43,16 +82,66 @@ class FirebaseService {
     }
   }
 
-  // Login with email and password
+  // Login using email or verified username
   Future<String?> login({
-    required String email,
+    required String emailOrUsername,
     required String password,
   }) async {
     try {
-      await _auth.signInWithEmailAndPassword(
-        email: email,
+      final trimmedInput = emailOrUsername.trim();
+      String loginEmail = trimmedInput;
+      DocumentSnapshot<Map<String, dynamic>>? profileDoc;
+
+      if (!trimmedInput.contains('@')) {
+        profileDoc = await getUserByUsername(trimmedInput);
+        if (profileDoc == null) {
+          return 'Username not found. Please use a registered email or verified username.';
+        }
+
+        final profileData = profileDoc.data();
+        if (profileData == null || !profileData.containsKey('email')) {
+          return 'Invalid user record. Please contact support.';
+        }
+
+        if (profileData['usernameVerified'] != true) {
+          return 'Please verify your username by confirming your email first.';
+        }
+
+        loginEmail = profileData['email'] as String;
+      }
+
+      final UserCredential result =
+          await _auth.signInWithEmailAndPassword(
+        email: loginEmail,
         password: password,
       );
+
+      final user = result.user;
+      if (user == null) {
+        return 'Login failed. Please try again.';
+      }
+
+      await user.reload();
+      if (!user.emailVerified) {
+        await user.sendEmailVerification();
+        await _auth.signOut();
+        return 'Email is not verified. A verification link has been resent to your inbox.';
+      }
+
+      if (profileDoc == null) {
+        profileDoc = await _usersRef.doc(user.uid).get();
+      }
+
+      if (profileDoc.exists) {
+        final profileData = profileDoc.data()!;
+        if (profileData['usernameVerified'] != true) {
+          await _usersRef.doc(user.uid).update({
+            'usernameVerified': true,
+            'emailVerified': true,
+          });
+        }
+      }
+
       return null; // null means success
     } catch (e) {
       return e.toString(); // return error message
@@ -64,67 +153,82 @@ class FirebaseService {
     await _auth.signOut();
   }
 
-  // ══════════════════════════════════════
-  // NOTES METHODS
-  // ══════════════════════════════════════
+  // ########################################################
+  // # NOTES METHODS
+  // ########################################################
 
   // Get all notes from Firestore
-  Stream<QuerySnapshot> getNotes() {
+  Stream<QuerySnapshot<Map<String, dynamic>>> getNotes() {
     return _firestore
         .collection('notes')
         .orderBy('timestamp', descending: true)
         .snapshots();
   }
 
-  // ══════════════════════════════════════
-  // STUDY GROUPS METHODS
-  // ══════════════════════════════════════
+  // Get notes uploaded by the current user
+  Stream<QuerySnapshot<Map<String, dynamic>>> getUserNotes(String uid) {
+    return _firestore
+        .collection('notes')
+        .where('userId', isEqualTo: uid)
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  }
 
-  // Get all study groups from Firestore
-  Stream<QuerySnapshot> getStudyGroups() {
+  // Get study groups joined by the current user
+  Stream<QuerySnapshot<Map<String, dynamic>>> getUserJoinedGroups(String uid) {
     return _firestore
         .collection('study_groups')
+        .where('members', arrayContains: uid)
         .snapshots();
+  }
+
+  // ########################################################
+  // # STUDY GROUPS METHODS
+  // ########################################################
+
+  // Get all study groups from Firestore
+  Stream<QuerySnapshot<Map<String, dynamic>>> getStudyGroups() {
+    return _firestore.collection('study_groups').snapshots();
   }
 
   // Join a study group
   Future<void> joinGroup(String groupId) async {
-    String uid = _auth.currentUser!.uid;
+    final String uid = _auth.currentUser!.uid;
 
     await _firestore.collection('study_groups').doc(groupId).update({
       'members': FieldValue.arrayUnion([uid]),
     });
 
-    await _firestore.collection('users').doc(uid).update({
+    await _usersRef.doc(uid).update({
       'joinedGroups': FieldValue.arrayUnion([groupId]),
     });
   }
 
   // Leave a study group
   Future<void> leaveGroup(String groupId) async {
-    String uid = _auth.currentUser!.uid;
+    final String uid = _auth.currentUser!.uid;
 
     await _firestore.collection('study_groups').doc(groupId).update({
       'members': FieldValue.arrayRemove([uid]),
     });
 
-    await _firestore.collection('users').doc(uid).update({
+    await _usersRef.doc(uid).update({
       'joinedGroups': FieldValue.arrayRemove([groupId]),
     });
   }
 
-  // ══════════════════════════════════════
-  // USER PROFILE METHODS
-  // ══════════════════════════════════════
+  // ########################################################
+  // # USER PROFILE METHODS
+  // ########################################################
 
   // Get current user profile from Firestore
   Future<Map<String, dynamic>?> getUserProfile() async {
-    String? uid = _auth.currentUser?.uid;
+    final String? uid = _auth.currentUser?.uid;
     if (uid == null) return null;
 
-    DocumentSnapshot doc =
-        await _firestore.collection('users').doc(uid).get();
+    final DocumentSnapshot<Map<String, dynamic>> doc =
+        await _usersRef.doc(uid).get();
 
-    return doc.data() as Map<String, dynamic>?;
+    return doc.data();
   }
 }

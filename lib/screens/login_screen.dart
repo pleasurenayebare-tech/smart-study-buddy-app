@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:smart_study_buddy/main.dart';
+import 'package:smart_study_buddy/firebase_service.dart';
 import 'signup_screen.dart';
 
+// ########################################################
+// # Login screen
+// # Allows email or verified username login.
+// ########################################################
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -10,33 +15,47 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
+  final _emailOrUsernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final FirebaseService _firebaseService = FirebaseService();
   bool _isLoading = false;
   String _errorMessage = '';
 
-  void _login() {
+  Future<void> _login() async {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
 
-    Future.delayed(const Duration(seconds: 1), () {
+    final input = _emailOrUsernameController.text.trim();
+    final password = _passwordController.text;
+
+    if (input.isEmpty || password.isEmpty) {
       setState(() {
+        _errorMessage = 'Please fill in all fields.';
         _isLoading = false;
       });
+      return;
+    }
 
-      if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-        setState(() {
-          _errorMessage = 'Please fill in all fields.';
-        });
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const MainNavigation()),
-        );
-      }
-    });
+    final result = await _firebaseService.login(
+      emailOrUsername: input,
+      password: password,
+    );
+
+    if (result != null) {
+      setState(() {
+        _errorMessage = result;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const MainNavigation()),
+    );
   }
 
   @override
@@ -71,23 +90,22 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 8),
               const Center(
                 child: Text(
-                  'Welcome back! Log in to continue.',
+                  'Welcome back! Log in with email or verified username.',
                   style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
               ),
               const SizedBox(height: 40),
-              const Text('Email',
+              const Text('Email or Username',
                   style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
+                controller: _emailOrUsernameController,
                 decoration: InputDecoration(
-                  hintText: 'Enter your email',
+                  hintText: 'Enter your email or username',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  prefixIcon: const Icon(Icons.email_outlined),
+                  prefixIcon: const Icon(Icons.person_outline),
                 ),
               ),
               const SizedBox(height: 16),
