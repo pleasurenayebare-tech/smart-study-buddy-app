@@ -63,11 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.celebration,
-                  size: 60,
-                  color: Colors.white,
-                ),
+                const Icon(Icons.celebration, size: 60, color: Colors.white),
                 const SizedBox(height: 16),
                 Text(
                   'Welcome Back, $_welcomeName!',
@@ -81,10 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 12),
                 const Text(
                   'Ready to learn and collaborate with your peers?',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white70,
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.white70),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
@@ -139,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppTheme.info, AppTheme.accent],
+                  colors: [AppTheme.primary, AppTheme.info],
                 ),
               ),
               child: Row(
@@ -176,7 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: const Text('Edit'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
-                      foregroundColor: AppTheme.info,
+                      foregroundColor: AppTheme.primary,
                     ),
                   ),
                 ],
@@ -199,15 +192,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 8),
                   const Text(
                     'Here\'s what\'s new in your courses',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
                   ),
                 ],
               ),
             ),
-            // Quick access menu
+            // Quick access cards
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: GridView.count(
@@ -264,10 +254,22 @@ class _HomeScreenState extends State<HomeScreen> {
                     uploadedBy: 'Alinaitwe Queen Denise',
                     type: 'Notes',
                   ),
+                  NoteCard(
+                    title: 'Operating Systems Past Paper 2022',
+                    course: 'BCS 3201',
+                    uploadedBy: 'Kimara Cyrus Kilibo',
+                    type: 'Past Paper',
+                  ),
+                  NoteCard(
+                    title: 'Software Engineering - Notes',
+                    course: 'BCS 3102',
+                    uploadedBy: 'Nayebare Pleasure',
+                    type: 'Notes',
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 80),
           ],
         ),
       ),
@@ -344,60 +346,20 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            _buildMenuOption(
-              'Notes',
-              Icons.note_alt,
-              AppTheme.info,
-              () => Navigator.pop(context),
-            ),
-            _buildMenuOption(
-              'Past Papers',
-              Icons.assignment,
-              AppTheme.warning,
-              () => Navigator.pop(context),
-            ),
-            _buildMenuOption(
-              'Study Groups',
-              Icons.group,
-              AppTheme.success,
-              () => Navigator.pop(context),
-            ),
-            _buildMenuOption(
-              'In-App Messages',
-              Icons.mail,
-              AppTheme.purple,
-              () => Navigator.pop(context),
-            ),
-            _buildMenuOption(
-              'Notifications',
-              Icons.notifications,
-              AppTheme.error,
-              () => Navigator.pop(context),
-            ),
-            _buildMenuOption(
-              'Profile / Account',
-              Icons.person,
-              AppTheme.primary,
-              () => Navigator.pop(context),
-            ),
-            _buildMenuOption(
-              'Invite Friends',
-              Icons.person_add,
-              AppTheme.orange,
-              _showInviteFriendsDialog,
-            ),
+            _buildMenuOption('Notes', Icons.note_alt, AppTheme.info, () => Navigator.pop(context)),
+            _buildMenuOption('Past Papers', Icons.assignment, AppTheme.warning, () => Navigator.pop(context)),
+            _buildMenuOption('Study Groups', Icons.group, AppTheme.success, () => Navigator.pop(context)),
+            _buildMenuOption('Messages', Icons.mail, AppTheme.purple, () => Navigator.pop(context)),
+            _buildMenuOption('Notifications', Icons.notifications, AppTheme.error, () => Navigator.pop(context)),
+            _buildMenuOption('Profile', Icons.person, AppTheme.primary, () => Navigator.pop(context)),
+            _buildMenuOption('Invite Friends', Icons.person_add, AppTheme.orange, _showInviteFriendsDialog),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMenuOption(
-    String title,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
+  Widget _buildMenuOption(String title, IconData icon, Color color, VoidCallback onTap) {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: color.withOpacity(0.2),
@@ -420,22 +382,15 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.share,
-                size: 48,
-                color: AppTheme.success,
-              ),
+              const Icon(Icons.share, size: 48, color: AppTheme.success),
               const SizedBox(height: 16),
               const Text(
                 'Invite Your Friends',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               const Text(
-                'Share your referral code with friends and earn rewards!',
+                'Share Smart Study Buddy with friends and study together!',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey),
               ),
@@ -507,7 +462,7 @@ class NoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final typeColor = AppColors.getColorByType(type);
+    final typeColor = type == 'Notes' ? AppTheme.info : AppTheme.warning;
     final typeLightColor = type == 'Notes' ? AppTheme.infoLight : AppTheme.warningLight;
 
     return Card(
@@ -557,10 +512,7 @@ class NoteCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     'by $uploadedBy',
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 11,
-                    ),
+                    style: const TextStyle(color: Colors.grey, fontSize: 11),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
