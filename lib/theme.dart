@@ -1,143 +1,95 @@
 import 'package:flutter/material.dart';
-
-// ########################################################
-// # App Theme — Multi-color palette for Smart Study Buddy
-// ########################################################
+import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Primary colors
-  static const Color primary = Color(0xFF1F4E79); // Dark Blue
-  static const Color primaryLight = Color(0xFF2196F3); // Bright Blue
-  static const Color accent = Color(0xFF00BCD4); // Cyan
+  // Primary Colors
+  static const Color primary = Color(0xFF008080);
+  static const Color primaryDark = Color(0xFF006666);
+  static const Color primaryLight = Color(0xFF00A8A8);
+  static const Color accent = Color(0xFFFFD700);
+  static const Color background = Color(0xFFF8FFFE);
+  static const Color cardBackground = Colors.white;
+  static const Color textPrimary = Color(0xFF1A1A2E);
+  static const Color textSecondary = Color(0xFF666666);
+  static const Color textLight = Color(0xFF999999);
+  static const Color divider = Color(0xFFEEEEEE);
+  static const Color success = Color(0xFF4CAF50);
+  static const Color error = Color(0xFFE53935);
 
-  // Status colors
-  static const Color success = Color(0xFF4CAF50); // Green
-  static const Color warning = Color(0xFFFFC107); // Yellow
-  static const Color error = Color(0xFFF44336); // Red
-  static const Color info = Color(0xFF2196F3); // Blue
-
-  // Additional palette colors
-  static const Color purple = Color(0xFF9C27B0);
-  static const Color orange = Color(0xFFFF9800);
-  static const Color indigo = Color(0xFF3F51B5);
-  static const Color teal = Color(0xFF009688);
-
-  // Neutral colors
-  static const Color background = Color(0xFFFAFAFA);
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color border = Color(0xFFE0E0E0);
-
-  // Light backgrounds for cards
-  static const Color successLight = Color(0xFFE8F5E9);
-  static const Color warningLight = Color(0xFFFFF9C4);
-  static const Color errorLight = Color(0xFFFFEBEE);
-  static const Color infoLight = Color(0xFFE3F2FD);
-  static const Color primaryLightBg = Color(0xFFE8F4FD);
-
-  // Get theme data
-  static ThemeData getThemeData() {
+  static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
-      colorScheme: const ColorScheme(
-        brightness: Brightness.light,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: primary,
         primary: primary,
-        onPrimary: Colors.white,
         secondary: accent,
-        onSecondary: Colors.white,
-        error: error,
-        onError: Colors.white,
         background: background,
-        onBackground: Colors.black87,
-        surface: surface,
-        onSurface: Colors.black87,
-        outline: border,
       ),
       scaffoldBackgroundColor: background,
-      appBarTheme: const AppBarTheme(
+      textTheme: GoogleFonts.poppinsTextTheme(),
+      appBarTheme: AppBarTheme(
         backgroundColor: primary,
         foregroundColor: Colors.white,
         elevation: 0,
+        centerTitle: false,
+        titleTextStyle: GoogleFonts.poppins(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
       ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: success,
-        foregroundColor: Colors.white,
+      cardTheme: CardThemeData(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        color: cardBackground,
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          textStyle: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: primary,
-          side: const BorderSide(color: primary),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
         ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: primary, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+        labelStyle: GoogleFonts.poppins(color: textSecondary),
+        hintStyle: GoogleFonts.poppins(color: textLight),
       ),
-      cardTheme: CardThemeData(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        color: surface,
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Colors.white,
+        selectedItemColor: primary,
+        unselectedItemColor: textLight,
+        elevation: 8,
+        type: BottomNavigationBarType.fixed,
       ),
     );
-  }
-}
-
-// ########################################################
-// # Color utility for dynamic color selection
-// ########################################################
-
-class AppColors {
-  static final List<Color> allColors = [
-    AppTheme.primary,
-    AppTheme.success,
-    AppTheme.warning,
-    AppTheme.error,
-    AppTheme.info,
-    AppTheme.purple,
-    AppTheme.orange,
-    AppTheme.indigo,
-    AppTheme.teal,
-  ];
-
-  static final List<Color> allColorsLight = [
-    AppTheme.primaryLightBg,
-    AppTheme.successLight,
-    AppTheme.warningLight,
-    AppTheme.errorLight,
-    AppTheme.infoLight,
-    const Color(0xFFF3E5F5), // Purple light
-    const Color(0xFFFFE0B2), // Orange light
-    const Color(0xFFE8EAF6), // Indigo light
-    const Color(0xFFE0F2F1), // Teal light
-  ];
-
-  static Color getColorByIndex(int index) {
-    return allColors[index % allColors.length];
-  }
-
-  static Color getColorLightByIndex(int index) {
-    return allColorsLight[index % allColorsLight.length];
-  }
-
-  static Color getColorByType(String type) {
-    switch (type.toLowerCase()) {
-      case 'notes':
-        return AppTheme.info;
-      case 'past paper':
-        return AppTheme.warning;
-      case 'group':
-        return AppTheme.success;
-      case 'message':
-        return AppTheme.purple;
-      case 'notification':
-        return AppTheme.error;
-      default:
-        return AppTheme.primary;
-    }
   }
 }
