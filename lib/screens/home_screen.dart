@@ -15,16 +15,16 @@ class _HomeScreenState extends State<HomeScreen> {
   String _welcomeName = 'Student';
   bool _isLoading = true;
   List<String> _selectedCourses = ['BCS 1101', 'BCS 2105'];
-  bool _welcomeShown = false;
+  static bool _hasShownWelcome = false;
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_welcomeShown && mounted) {
+      if (!_hasShownWelcome && mounted) {
         _showWelcomeDialog();
-        _welcomeShown = true;
+        _hasShownWelcome = true;
       }
     });
   }
@@ -48,55 +48,64 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       barrierDismissible: true,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            gradient: LinearGradient(
+            borderRadius: BorderRadius.circular(24),
+            gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [AppTheme.primary, AppTheme.primary.withOpacity(0.7)],
+              colors: [Color(0xFF005F5F), Color(0xFF008080), Color(0xFF00A8A8)],
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(28),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.celebration, size: 60, color: Colors.white),
-                const SizedBox(height: 16),
+                Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.celebration, size: 40, color: Colors.white),
+                ),
+                const SizedBox(height: 20),
                 Text(
-                  'Welcome Back, $_welcomeName!',
+                  'Welcome Back,\n$_welcomeName!',
                   style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
                     color: Colors.white,
+                    height: 1.3,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 const Text(
-                  'Ready to learn and collaborate with your peers?',
-                  style: TextStyle(fontSize: 14, color: Colors.white70),
+                  'Ready to learn and collaborate\nwith your peers?',
+                  style: TextStyle(fontSize: 13, color: Colors.white70, height: 1.5),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppTheme.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: AppTheme.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 12,
+                    child: const Text(
+                      'Let\'s Go! 🚀',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                     ),
-                  ),
-                  child: const Text(
-                    'Get Started',
-                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -110,15 +119,44 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: const Color(0xFFF0F7F7),
       appBar: AppBar(
-        title: const Text('Smart Study Buddy'),
+        title: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Stack(
+                alignment: Alignment.center,
+                children: [
+                  Positioned(
+                    bottom: 4,
+                    child: Icon(Icons.menu_book_rounded, size: 18, color: Colors.white),
+                  ),
+                  Positioned(
+                    top: 4,
+                    child: Icon(Icons.lightbulb, size: 10, color: Color(0xFFFFD700)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'Smart Study Buddy',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.menu),
+            icon: const Icon(Icons.menu_rounded),
             onPressed: _showMainMenu,
           ),
         ],
@@ -127,85 +165,138 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Course selection bar
+            // Hero banner
             Container(
-              padding: const EdgeInsets.all(16),
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppTheme.primary, AppTheme.info],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF005F5F), Color(0xFF008080), Color(0xFF00A8A8)],
+                ),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(28),
+                  bottomRight: Radius.circular(28),
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Your Courses',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _selectedCourses.join(', '),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: _selectCourses,
-                    icon: const Icon(Icons.edit, size: 18),
-                    label: const Text('Edit'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: AppTheme.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Welcome section
-            Container(
-              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Hello, $_welcomeName!',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primary,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Hello, $_welcomeName! 👋',
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Ready to study smart today?',
+                              style: TextStyle(fontSize: 13, color: Colors.white70),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white.withOpacity(0.3)),
+                        ),
+                        child: const Icon(Icons.auto_stories_rounded, color: Colors.white, size: 28),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Here\'s what\'s new in your courses',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: _selectCourses,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.school_outlined, color: Colors.white, size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            _selectedCourses.take(2).join(' • '),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.edit, color: Colors.white70, size: 14),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-            // Quick access cards
-            Container(
+
+            const SizedBox(height: 20),
+
+            // Stats row
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  _buildStatCard('Notes Shared', '24', Icons.upload_file, AppTheme.info),
+                  const SizedBox(width: 10),
+                  _buildStatCard('Groups Joined', '3', Icons.group, AppTheme.success),
+                  const SizedBox(width: 10),
+                  _buildStatCard('Downloads', '12', Icons.download, AppTheme.warning),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Quick access section
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: const [
+                  Text(
+                    'Quick Access',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1A2E),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: GridView.count(
                 crossAxisCount: 3,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 1.3,
                 children: [
                   _buildQuickAccessCard('Notes', Icons.note_alt, AppTheme.info),
                   _buildQuickAccessCard('Past Papers', Icons.assignment, AppTheme.warning),
@@ -216,21 +307,35 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+
+            const SizedBox(height: 24),
+
             // Recent Notes section
-            Container(
+            Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: const Text(
-                'Recent Notes & Past Papers',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primary,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Recent Notes & Past Papers',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1A2E),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {},
+                    child: const Text(
+                      'See all',
+                      style: TextStyle(color: AppTheme.primary, fontSize: 13),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            Container(
+            const SizedBox(height: 8),
+            Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: ListView(
                 shrinkWrap: true,
@@ -269,16 +374,59 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 80),
+            const SizedBox(height: 90),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {},
-        backgroundColor: AppTheme.success,
-        foregroundColor: Colors.white,
+        backgroundColor: AppTheme.accent,
+        foregroundColor: Colors.black87,
         icon: const Icon(Icons.upload_file),
-        label: const Text('Upload'),
+        label: const Text(
+          'Upload',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+          border: Border.all(color: color.withOpacity(0.15)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 10, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -286,23 +434,39 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildQuickAccessCard(String title, IconData icon, Color color) {
     return InkWell(
       onTap: () {},
+      borderRadius: BorderRadius.circular(14),
       child: Container(
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          border: Border.all(color: color.withOpacity(0.3), width: 2),
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.1),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+          border: Border.all(color: color.withOpacity(0.2)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 8),
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(height: 6),
             Text(
               title,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
                 color: color,
               ),
             ),
@@ -315,9 +479,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _selectCourses() async {
     final result = await Navigator.push<List<String>>(
       context,
-      MaterialPageRoute(
-        builder: (context) => const CourseSelectionScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const CourseSelectionScreen()),
     );
     if (result != null) {
       setState(() {
@@ -330,7 +492,7 @@ class _HomeScreenState extends State<HomeScreen> {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) => Container(
         padding: const EdgeInsets.all(16),
@@ -362,11 +524,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildMenuOption(String title, IconData icon, Color color, VoidCallback onTap) {
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: color.withOpacity(0.2),
-        child: Icon(icon, color: color),
+        backgroundColor: color.withOpacity(0.15),
+        child: Icon(icon, color: color, size: 20),
       ),
-      title: Text(title),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.w500),
+      ),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
       onTap: onTap,
     );
   }
@@ -376,31 +541,39 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.share, size: 48, color: AppTheme.success),
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppTheme.successLight,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.share, size: 32, color: AppTheme.success),
+              ),
               const SizedBox(height: 16),
               const Text(
                 'Invite Your Friends',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               const Text(
                 'Share Smart Study Buddy with friends and study together!',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: Colors.grey, fontSize: 13),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: AppTheme.successLight,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppTheme.success),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.success.withOpacity(0.4)),
                 ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -408,9 +581,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(
                       'SSB2024X7K9Q',
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w800,
                         fontSize: 16,
                         letterSpacing: 2,
+                        color: AppTheme.success,
                       ),
                     ),
                     Icon(Icons.copy, color: AppTheme.success),
@@ -423,6 +597,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.grey.shade300),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
                       child: const Text('Close'),
                     ),
                   ),
@@ -432,6 +612,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       onPressed: () => Navigator.pop(context),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.success,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       child: const Text('Share'),
                     ),
@@ -465,25 +648,34 @@ class NoteCard extends StatelessWidget {
     final typeColor = type == 'Notes' ? AppTheme.info : AppTheme.warning;
     final typeLightColor = type == 'Notes' ? AppTheme.infoLight : AppTheme.warningLight;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(14.0),
         child: Row(
           children: [
             Container(
-              width: 50,
-              height: 50,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: typeLightColor,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 type == 'Past Paper' ? Icons.assignment : Icons.note_alt_outlined,
                 color: typeColor,
-                size: 28,
+                size: 26,
               ),
             ),
             const SizedBox(width: 12),
@@ -494,22 +686,30 @@ class NoteCard extends StatelessWidget {
                   Text(
                     title,
                     style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      color: Color(0xFF1A1A2E),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    course,
-                    style: TextStyle(
-                      color: typeColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                  const SizedBox(height: 3),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: typeColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      course,
+                      style: TextStyle(
+                        color: typeColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
                     'by $uploadedBy',
                     style: const TextStyle(color: Colors.grey, fontSize: 11),
@@ -519,7 +719,15 @@ class NoteCard extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.download_outlined, color: typeColor),
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: typeColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.download_outlined, color: typeColor, size: 18),
+            ),
           ],
         ),
       ),
