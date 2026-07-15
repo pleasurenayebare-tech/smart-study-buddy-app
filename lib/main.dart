@@ -28,7 +28,7 @@ class SmartStudyBuddy extends StatelessWidget {
     return MaterialApp(
       title: 'Smart Study Buddy',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.getThemeData(),
+      theme: AppTheme.lightTheme,
       home: const SplashScreen(),
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
