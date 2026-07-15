@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smart_study_buddy/firebase_service.dart';
+import '../theme.dart';
 import 'login_screen.dart';
 
 // ########################################################
@@ -97,12 +98,36 @@ class _SignupScreenState extends State<SignupScreen> {
             children: [
               const SizedBox(height: 40),
               Center(
-                child: Icon(
-                  Icons.menu_book_rounded,
-                  size: 80,
-                  color: const Color(0xFF1F4E79),
+                child: Container(
+                  width: 90,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary,
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primary.withOpacity(0.4),
+                        blurRadius: 15,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: const [
+                      Positioned(
+                        bottom: 18,
+                        child: Icon(Icons.menu_book_rounded, size: 45, color: Colors.white),
+                      ),
+                      Positioned(
+                        top: 12,
+                        child: Icon(Icons.lightbulb, size: 20, color: Color(0xFFFFD700)),
+                      ),
+                    ],
+                  ),
                 ),
               ),
+              const SizedBox(height: 12),
               const SizedBox(height: 16),
               const Center(
                 child: Text(
