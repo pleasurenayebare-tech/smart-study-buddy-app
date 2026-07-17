@@ -132,6 +132,45 @@ class FirebaseService {
     });
   }
 
+  // Switch a user to a new course: leaves their current course-based group(s)
+  // and gets auto-assigned to a group for the new course.
+  Future<void> switchCourse({required String uid, required String newCourse}) async {
+    final userDoc = await _usersRef.doc(uid).get();
+    final userData = userDoc.data();
+    if (userData == null) return;
+
+    final oldCourse = userData['course'] as String?;
+    final joinedGroups = List<String>.from(userData['joinedGroups'] ?? []);
+
+    // Find and leave any group tied to the old course
+    if (oldCourse != null && joinedGroups.isNotEmpty) {
+      final groupsRef = _firestore.collection('study_groups');
+      final oldCourseGroups = await groupsRef
+          .where('course', isEqualTo: oldCourse)
+          .where('members', arrayContains: uid)
+          .get();
+
+      for (final groupDoc in oldCourseGroups.docs) {
+        await _firestore.runTransaction((transaction) async {
+          transaction.update(groupDoc.reference, {
+            'members': FieldValue.arrayRemove([uid]),
+            'memberCount': FieldValue.increment(-1),
+          });
+        });
+
+        await _usersRef.doc(uid).update({
+          'joinedGroups': FieldValue.arrayRemove([groupDoc.id]),
+        });
+      }
+    }
+
+    // Update the user's course field
+    await _usersRef.doc(uid).update({'course': newCourse});
+
+    // Assign to a group for the new course
+    await assignToGroup(uid: uid, course: newCourse);
+  }
+
   // Login using email or verified username
   Future<String?> login({
     required String emailOrUsername,
