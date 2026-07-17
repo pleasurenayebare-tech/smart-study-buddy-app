@@ -7,6 +7,7 @@ import 'login_screen.dart';
 // # Signup screen
 // # Create a new user account with a verified username.
 // ########################################################
+
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
@@ -21,6 +22,15 @@ class _SignupScreenState extends State<SignupScreen> {
   final _passwordController = TextEditingController();
   final _bioController = TextEditingController();
   final FirebaseService _firebaseService = FirebaseService();
+
+  String? _selectedCourse;
+  final List<String> _courses = [
+    'BSc Computer Science',
+    'BSc Software Engineering',
+    'BSc Information Technology',
+    'BSc Information Systems',
+  ];
+
   bool _isLoading = false;
   String _errorMessage = '';
 
@@ -36,9 +46,13 @@ class _SignupScreenState extends State<SignupScreen> {
     final password = _passwordController.text;
     final bio = _bioController.text.trim();
 
-    if (fullName.isEmpty || username.isEmpty || email.isEmpty || password.isEmpty) {
+    if (fullName.isEmpty ||
+        username.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        _selectedCourse == null) {
       setState(() {
-        _errorMessage = 'Please fill in all required fields.';
+        _errorMessage = 'Please fill in all required fields, including your course.';
         _isLoading = false;
       });
       return;
@@ -58,6 +72,7 @@ class _SignupScreenState extends State<SignupScreen> {
       username: username,
       email: email,
       password: password,
+      course: _selectedCourse!,
       bio: bio.isEmpty ? null : bio,
     );
 
@@ -74,12 +89,14 @@ class _SignupScreenState extends State<SignupScreen> {
     });
 
     if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Account created! Please verify your email before logging in.'),
         backgroundColor: Color(0xFF1F4E79),
       ),
     );
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -147,6 +164,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
               const SizedBox(height: 40),
+
               const Text('Full Name', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               TextField(
@@ -160,6 +178,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
               const Text('Username', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               TextField(
@@ -173,6 +192,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
               const Text('Email', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               TextField(
@@ -187,6 +207,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
               const Text('Password', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               TextField(
@@ -201,6 +222,25 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              const Text('Course', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<String>(
+                value: _selectedCourse,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  prefixIcon: const Icon(Icons.school_outlined),
+                ),
+                hint: const Text('Select your course'),
+                items: _courses
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (val) => setState(() => _selectedCourse = val),
+              ),
+              const SizedBox(height: 16),
+
               const Text('Bio (optional)', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               TextField(
@@ -215,12 +255,14 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
               const SizedBox(height: 12),
+
               if (_errorMessage.isNotEmpty)
                 Text(
                   _errorMessage,
                   style: const TextStyle(color: Colors.red, fontSize: 13),
                 ),
               const SizedBox(height: 20),
+
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -239,6 +281,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
               const SizedBox(height: 20),
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
