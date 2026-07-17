@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../firebase_service.dart';
 import '../theme.dart';
+import 'switch_course_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -148,7 +149,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 20),
 
                   // Activity stats
@@ -179,7 +179,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 20),
 
                   // Info card
@@ -221,6 +220,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           _buildDivider(),
                           _buildInfoRow(
+                            Icons.school_outlined,
+                            'Course',
+                            _profile?['course'] ?? 'Not set',
+                            AppTheme.primary,
+                          ),
+                          _buildDivider(),
+                          _buildInfoRow(
                             Icons.info_outline,
                             'Bio',
                             _profile?['bio'] ?? 'No bio added yet',
@@ -230,7 +236,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 20),
 
                   // Actions
@@ -260,6 +265,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 10),
                         _buildActionButton(
+                          'Change Course',
+                          Icons.swap_horiz,
+                          AppTheme.warning,
+                          () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const SwitchCourseScreen(),
+                              ),
+                            );
+                            // Refresh profile in case the course changed
+                            _loadProfile();
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        _buildActionButton(
                           'Sign Out',
                           Icons.logout,
                           AppTheme.error,
@@ -270,7 +291,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 30),
                 ],
               ),
@@ -414,5 +434,3 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
-
- 
