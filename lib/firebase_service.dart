@@ -12,6 +12,9 @@ class FirebaseService {
   final CollectionReference<Map<String, dynamic>> _usersRef =
       FirebaseFirestore.instance.collection('users');
 
+  // Maximum members per auto-assigned study group
+  static const int _groupCapacity = 8;
+
   // ########################################################
   // # AUTHENTICATION METHODS
   // ########################################################
@@ -33,20 +36,24 @@ class FirebaseService {
     final querySnapshot = await _usersRef
         .where('username', isEqualTo: username.toLowerCase().trim())
         .get();
+
     if (querySnapshot.docs.isEmpty) return null;
     return querySnapshot.docs.first;
   }
 
-  // Sign up with email, password, and a verified username
+  // Sign up with email, password, a verified username, and a course.
+  // Automatically assigns the new user to a study group for their course.
   Future<String?> signUp({
     required String fullName,
     required String username,
     required String email,
     required String password,
+    required String course,
     String? bio,
   }) async {
     try {
       final normalizedUsername = username.toLowerCase().trim();
+
       if (!await isUsernameUnique(normalizedUsername)) {
         return 'That username is already taken. Please choose another one.';
       }
@@ -68,6 +75,7 @@ class FirebaseService {
         'fullName': fullName.trim(),
         'username': normalizedUsername,
         'email': email.trim(),
+        'course': course,
         'bio': bio?.trim() ?? 'Student focused on collaborative learning.',
         'joinedGroups': [],
         'uploadCount': 0,
@@ -76,10 +84,52 @@ class FirebaseService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
+      // Automatically assign the new user to a study group for their course
+      await assignToGroup(uid: user.uid, course: course);
+
       return null; // null means success
     } catch (e) {
       return e.toString(); // return error message
     }
+  }
+
+  // Finds a study group for this course with room, or creates a new one,
+  // and adds the user to it. Runs as a transaction to avoid race conditions
+  // when multiple students sign up for the same course at once.
+  Future<void> assignToGroup({required String uid, required String course}) async {
+    final groupsRef = _firestore.collection('study_groups');
+
+    await _firestore.runTransaction((transaction) async {
+      final candidates = await groupsRef
+          .where('course', isEqualTo: course)
+          .where('memberCount', isLessThan: _groupCapacity)
+          .limit(1)
+          .get();
+
+      DocumentReference<Map<String, dynamic>> groupRef;
+
+      if (candidates.docs.isNotEmpty) {
+        groupRef = candidates.docs.first.reference;
+        transaction.update(groupRef, {
+          'members': FieldValue.arrayUnion([uid]),
+          'memberCount': FieldValue.increment(1),
+        });
+      } else {
+        groupRef = groupsRef.doc();
+        final groupNumber = DateTime.now().millisecondsSinceEpoch % 1000;
+        transaction.set(groupRef, {
+          'name': '$course Study Group #$groupNumber',
+          'course': course,
+          'members': [uid],
+          'memberCount': 1,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      transaction.update(_usersRef.doc(uid), {
+        'joinedGroups': FieldValue.arrayUnion([groupRef.id]),
+      });
+    });
   }
 
   // Login using email or verified username
@@ -110,8 +160,7 @@ class FirebaseService {
         loginEmail = profileData['email'] as String;
       }
 
-      final UserCredential result =
-          await _auth.signInWithEmailAndPassword(
+      final UserCredential result = await _auth.signInWithEmailAndPassword(
         email: loginEmail,
         password: password,
       );
@@ -122,6 +171,7 @@ class FirebaseService {
       }
 
       await user.reload();
+
       if (!user.emailVerified) {
         await user.sendEmailVerification();
         await _auth.signOut();
@@ -194,11 +244,9 @@ class FirebaseService {
   // Join a study group
   Future<void> joinGroup(String groupId) async {
     final String uid = _auth.currentUser!.uid;
-
     await _firestore.collection('study_groups').doc(groupId).update({
       'members': FieldValue.arrayUnion([uid]),
     });
-
     await _usersRef.doc(uid).update({
       'joinedGroups': FieldValue.arrayUnion([groupId]),
     });
@@ -207,11 +255,9 @@ class FirebaseService {
   // Leave a study group
   Future<void> leaveGroup(String groupId) async {
     final String uid = _auth.currentUser!.uid;
-
     await _firestore.collection('study_groups').doc(groupId).update({
       'members': FieldValue.arrayRemove([uid]),
     });
-
     await _usersRef.doc(uid).update({
       'joinedGroups': FieldValue.arrayRemove([groupId]),
     });
@@ -228,7 +274,6 @@ class FirebaseService {
 
     final DocumentSnapshot<Map<String, dynamic>> doc =
         await _usersRef.doc(uid).get();
-
     return doc.data();
   }
 }
