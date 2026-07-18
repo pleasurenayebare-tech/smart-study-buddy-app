@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 class FirebaseService {
   // Auth instance
@@ -269,6 +271,62 @@ class FirebaseService {
         .collection('study_groups')
         .where('members', arrayContains: uid)
         .snapshots();
+  }
+
+  // ########################################################
+  // # UPLOAD METHODS
+  // ########################################################
+
+  // Uploads a file to Firebase Storage and saves its metadata to Firestore,
+  // scoped to a specific study group. Returns a stream of upload progress (0.0–1.0).
+  Stream<double> uploadNote({
+    required String filePath,
+    required String groupId,
+    required String userId,
+    required String title,
+  }) {
+    final file = File(filePath);
+    final fileName =
+        '${DateTime.now().millisecondsSinceEpoch}_${filePath.split('/').last}';
+    final ref = FirebaseStorage.instance.ref('notes/$groupId/$fileName');
+    final uploadTask = ref.putFile(file);
+
+    uploadTask.then((snapshot) async {
+      final url = await snapshot.ref.getDownloadURL();
+      await _firestore.collection('notes').add({
+        'groupId': groupId,
+        'userId': userId,
+        'title': title,
+        'fileUrl': url,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      await _usersRef.doc(userId).update({
+        'uploadCount': FieldValue.increment(1),
+      });
+    });
+
+    return uploadTask.snapshotEvents.map(
+      (event) => event.bytesTransferred / event.totalBytes,
+    );
+  }
+
+  // Get notes for a specific study group
+  Stream<QuerySnapshot<Map<String, dynamic>>> getNotesForGroup(String groupId) {
+    return _firestore
+        .collection('notes')
+        .where('groupId', isEqualTo: groupId)
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  }
+
+  // ########################################################
+  // # DISCOVERY METHODS
+  // ########################################################
+
+  // Find other users taking the same course
+  Stream<QuerySnapshot<Map<String, dynamic>>> discoverUsersByCourse(
+      String course, String currentUserId) {
+    return _usersRef.where('course', isEqualTo: course).snapshots();
   }
 
   // ########################################################
