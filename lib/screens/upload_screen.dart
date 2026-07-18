@@ -1,13 +1,12 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import '../services/upload_service.dart';
+import '../firebase_service.dart';
 
 class UploadScreen extends StatefulWidget {
   final String userId;
-  final List<String> courses; // pass in the user's enrolled courses
+  final String groupId;
 
-  const UploadScreen({super.key, required this.userId, required this.courses});
+  const UploadScreen({super.key, required this.userId, required this.groupId});
 
   @override
   State<UploadScreen> createState() => _UploadScreenState();
@@ -15,10 +14,9 @@ class UploadScreen extends StatefulWidget {
 
 class _UploadScreenState extends State<UploadScreen> {
   final _titleController = TextEditingController();
-  String? _selectedCourse;
-  File? _pickedFile;
+  String? _pickedFilePath;
   double? _progress;
-  final _uploadService = UploadService();
+  final _firebaseService = FirebaseService();
 
   Future<void> _pickFile() async {
     final result = await FilePicker.platform.pickFiles(
@@ -26,33 +24,45 @@ class _UploadScreenState extends State<UploadScreen> {
       allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
     );
     if (result != null && result.files.single.path != null) {
-      setState(() => _pickedFile = File(result.files.single.path!));
+      setState(() => _pickedFilePath = result.files.single.path!);
     }
   }
 
   void _startUpload() {
-    if (_pickedFile == null || _selectedCourse == null || _titleController.text.isEmpty) {
+    if (_pickedFilePath == null || _titleController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields and pick a file')),
+        const SnackBar(content: Text('Please add a title and pick a file')),
       );
       return;
     }
 
-    _uploadService.uploadNote(
-      file: _pickedFile!,
-      courseId: _selectedCourse!,
-      userId: widget.userId,
-      title: _titleController.text,
-      onComplete: (note) {
+    _firebaseService
+        .uploadNote(
+          filePath: _pickedFilePath!,
+          groupId: widget.groupId,
+          userId: widget.userId,
+          title: _titleController.text,
+        )
+        .listen(
+      (progress) {
+        setState(() => _progress = progress);
+        if (progress >= 1.0) {
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Upload complete!')),
+            );
+            Navigator.pop(context);
+          });
+        }
+      },
+      onError: (_) {
         setState(() => _progress = null);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Upload complete!')),
+          const SnackBar(content: Text('Upload failed. Please try again.')),
         );
-        Navigator.pop(context);
       },
-    ).listen((progress) {
-      setState(() => _progress = progress);
-    });
+    );
   }
 
   @override
@@ -64,15 +74,6 @@ class _UploadScreenState extends State<UploadScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            DropdownButtonFormField<String>(
-              value: _selectedCourse,
-              decoration: const InputDecoration(labelText: 'Course'),
-              items: widget.courses
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                  .toList(),
-              onChanged: (val) => setState(() => _selectedCourse = val),
-            ),
-            const SizedBox(height: 16),
             TextField(
               controller: _titleController,
               decoration: const InputDecoration(labelText: 'Title'),
@@ -81,7 +82,7 @@ class _UploadScreenState extends State<UploadScreen> {
             OutlinedButton.icon(
               onPressed: _pickFile,
               icon: const Icon(Icons.attach_file),
-              label: Text(_pickedFile?.path.split('/').last ?? 'Choose a file'),
+              label: Text(_pickedFilePath?.split('/').last ?? 'Choose a file'),
             ),
             const SizedBox(height: 24),
             if (_progress != null) LinearProgressIndicator(value: _progress),
