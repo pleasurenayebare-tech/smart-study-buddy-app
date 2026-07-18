@@ -272,7 +272,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const SwitchCourseScreen(),
+                                builder: (_) => SwitchCourseScreen(),
                               ),
                             );
                             // Refresh profile in case the course changed
