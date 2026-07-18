@@ -14,6 +14,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
   bool _isLoading = false;
   String _errorMessage = '';
 
@@ -41,6 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (!mounted) return;
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const MainNavigation()),
@@ -84,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(22),
                     boxShadow: [
                       BoxShadow(
-                        colors.someColor.withValues(alpha: 0.5),
+                        color: AppTheme.primary.withValues(alpha: 0.4),
                         blurRadius: 15,
                         offset: const Offset(0, 8),
                       ),
@@ -125,8 +127,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 40),
-              const Text('Email',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+
+              const Text('Email', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               TextField(
                 controller: _emailController,
@@ -140,8 +142,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text('Password',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+
+              const Text('Password', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               TextField(
                 controller: _passwordController,
@@ -155,12 +157,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 12),
+
               if (_errorMessage.isNotEmpty)
                 Text(
                   _errorMessage,
                   style: const TextStyle(color: Colors.red, fontSize: 13),
                 ),
               const SizedBox(height: 20),
+
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -175,11 +179,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Log In',
-                          style: TextStyle(fontSize: 16)),
+                      : const Text('Log In', style: TextStyle(fontSize: 16)),
                 ),
               ),
               const SizedBox(height: 20),
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
