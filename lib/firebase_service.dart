@@ -35,14 +35,18 @@ class FirebaseService {
 
   // Find a user document by username
   Future<DocumentSnapshot<Map<String, dynamic>>?> getUserByUsername(
-      String username) async {
-    final querySnapshot = await _usersRef
-        .where('username', isEqualTo: username.toLowerCase().trim())
-        .get();
+    String username) async {
+  final lookup = await _firestore
+      .collection('usernames')
+      .doc(username.toLowerCase().trim())
+      .get();
 
-    if (querySnapshot.docs.isEmpty) return null;
-    return querySnapshot.docs.first;
-  }
+  if (!lookup.exists) return null;
+  final uid = lookup.data()?['uid'] as String?;
+  if (uid == null) return null;
+
+  return _usersRef.doc(uid).get();
+}
 
   // Sign up with email, password, a verified username, and a course.
   // Automatically assigns the new user to a study group for their course.
@@ -89,7 +93,9 @@ class FirebaseService {
 
       // Automatically assign the new user to a study group for their course
       await assignToGroup(uid: user.uid, course: course);
-
+      await _firestore.collection('usernames').doc(normalizedUsername).set({
+        'uid': user.uid,
+     });
       return null; // null means success
     } catch (e) {
       return e.toString(); // return error message
