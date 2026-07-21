@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import '../firebase_service.dart';
 
 class DiscoverScreen extends StatelessWidget {
-  String? currentUserId;
-  String? course;
+  final String currentUserId;
+  final String course;
 
   const DiscoverScreen({
     super.key,
-    this.currentUserId,
-    this.course,
+    required this.currentUserId,
+    required this.course,
   });
 
   @override
