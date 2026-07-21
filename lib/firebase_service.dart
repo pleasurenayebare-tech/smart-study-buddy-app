@@ -25,12 +25,13 @@ class FirebaseService {
   User? get currentUser => _auth.currentUser;
 
   // Check if a username is unique in Firestore
-  Future<bool> isUsernameUnique(String username) async {
-    final querySnapshot = await _usersRef
-        .where('username', isEqualTo: username.toLowerCase().trim())
-        .get();
-    return querySnapshot.docs.isEmpty;
-  }
+ Future<bool> isUsernameUnique(String username) async {
+  final doc = await _firestore
+      .collection('usernames')
+      .doc(username.toLowerCase().trim())
+      .get();
+  return !doc.exists;
+}
 
   // Find a user document by username
   Future<DocumentSnapshot<Map<String, dynamic>>?> getUserByUsername(
