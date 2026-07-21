@@ -3,10 +3,10 @@ import 'package:file_picker/file_picker.dart';
 import '../firebase_service.dart';
 
 class UploadScreen extends StatefulWidget {
-  final String userId;
-  final String groupId;
+  String? userId;
+  String? groupId;
 
-  const UploadScreen({super.key, required this.userId, required this.groupId});
+  const UploadScreen({super.key, this.userId, this.groupId});
 
   @override
   State<UploadScreen> createState() => _UploadScreenState();
