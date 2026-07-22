@@ -227,11 +227,14 @@ class FirebaseService {
 
       await user.reload();
 
+      // Commented out to bypass verification for development
+      /*
       if (!user.emailVerified) {
         await user.sendEmailVerification();
         await _auth.signOut();
         return 'Email is not verified. A verification link has been resent to your inbox.';
       }
+      */
 
       if (profileDoc == null) {
         profileDoc = await _usersRef.doc(user.uid).get();
