@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../firebase_service.dart';
 import '../theme.dart';
-import 'switch_course_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -14,6 +13,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final FirebaseService _service = FirebaseService();
   Map<String, dynamic>? _profile;
   bool _isLoading = true;
+  bool _isEditing = false;
+
+  final _nameController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _bioController = TextEditingController();
 
   @override
   void initState() {
@@ -26,7 +30,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       _profile = profile;
       _isLoading = false;
+      if (profile != null) {
+        _nameController.text = profile['fullName'] ?? '';
+        _usernameController.text = profile['username'] ?? '';
+        _bioController.text = profile['bio'] ?? '';
+      }
     });
+  }
+
+  Future<void> _saveProfile() async {
+    setState(() => _isLoading = true);
+    try {
+      await _service.updateUserProfile({
+        'fullName': _nameController.text.trim(),
+        'username': _usernameController.text.trim(),
+        'bio': _bioController.text.trim(),
+      });
+      await _loadProfile();
+      setState(() => _isEditing = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Profile updated successfully!'),
+            backgroundColor: AppTheme.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating profile: $e'),
+            backgroundColor: AppTheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -39,15 +84,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () {},
-            tooltip: 'Edit Profile',
-          ),
+          if (!_isEditing)
+            TextButton.icon(
+              onPressed: () => setState(() => _isEditing = true),
+              icon: const Icon(Icons.edit, color: Color(0xFFFFD700), size: 18),
+              label: const Text(
+                'Edit',
+                style: TextStyle(
+                  color: Color(0xFFFFD700),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            )
+          else
+            Row(
+              children: [
+                TextButton(
+                  onPressed: () {
+                    setState(() => _isEditing = false);
+                    _loadProfile();
+                  },
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _saveProfile,
+                  child: const Text(
+                    'Save',
+                    style: TextStyle(
+                      color: Color(0xFFFFD700),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.primary),
+            )
           : SingleChildScrollView(
               child: Column(
                 children: [
@@ -72,7 +151,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     child: Column(
                       children: [
-                        // Profile picture
                         Stack(
                           children: [
                             Container(
@@ -95,60 +173,217 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Positioned(
                               bottom: 0,
                               right: 0,
-                              child: Container(
-                                width: 28,
-                                height: 28,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFFFD700),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.camera_alt,
-                                  size: 14,
-                                  color: Colors.black87,
+                              child: GestureDetector(
+                                onTap: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: const Text(
+                                        'Profile picture upload coming soon!',
+                                      ),
+                                      backgroundColor: AppTheme.primary,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFFFD700),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt,
+                                    size: 14,
+                                    color: Colors.black87,
+                                  ),
                                 ),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 12),
-                        Text(
-                          _profile?['fullName'] ?? 'Student',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
-                        ),
+                        _isEditing
+                            ? TextField(
+                                controller: _nameController,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Full Name',
+                                  hintStyle: const TextStyle(
+                                    color: Colors.white54,
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: BorderSide(
+                                      color: Colors.white.withOpacity(0.3),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFFFD700),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white.withOpacity(0.1),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 10,
+                                  ),
+                                ),
+                              )
+                            : Text(
+                                _profile?['fullName'] ?? 'Student',
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
                         const SizedBox(height: 4),
-                        Text(
-                          '@${_profile?['username'] ?? 'username'}',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            _profile?['bio'] ?? 'No bio yet',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.white,
+                        _isEditing
+                            ? Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: TextField(
+                                  controller: _usernameController,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white70,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: '@username',
+                                    hintStyle: const TextStyle(
+                                      color: Colors.white38,
+                                    ),
+                                    prefixText: '@',
+                                    prefixStyle: const TextStyle(
+                                      color: Colors.white70,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: BorderSide(
+                                        color: Colors.white.withOpacity(0.3),
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFFFFD700),
+                                        width: 2,
+                                      ),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white.withOpacity(0.1),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : Text(
+                                '@${_profile?['username'] ?? 'username'}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                        const SizedBox(height: 10),
+                        _isEditing
+                            ? Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: TextField(
+                                  controller: _bioController,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.white,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: 'Write something about yourself...',
+                                    hintStyle: const TextStyle(
+                                      color: Colors.white38,
+                                      fontSize: 13,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: BorderSide(
+                                        color: Colors.white.withOpacity(0.3),
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: const BorderSide(
+                                        color: Color(0xFFFFD700),
+                                        width: 2,
+                                      ),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white.withOpacity(0.1),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  _profile?['bio'] ?? 'No bio yet. Tap Edit to add one.',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.white,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                        if (_isEditing) ...[
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _saveProfile,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFFD700),
+                                foregroundColor: Colors.black87,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              child: const Text(
+                                'Save Changes',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 20),
 
                   // Activity stats
@@ -179,6 +414,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 20),
 
                   // Info card
@@ -223,33 +459,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Icons.school_outlined,
                             'Course',
                             _profile?['course'] ?? 'Not set',
-                            AppTheme.primary,
+                            AppTheme.success,
                           ),
                           _buildDivider(),
                           _buildInfoRow(
                             Icons.info_outline,
                             'Bio',
                             _profile?['bio'] ?? 'No bio added yet',
-                            AppTheme.success,
+                            AppTheme.purple,
                           ),
                         ],
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 20),
 
-                  // Actions
+                  // Action buttons
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Column(
                       children: [
-                        _buildActionButton(
-                          'Edit Profile',
-                          Icons.edit,
-                          AppTheme.primary,
-                          () {},
-                        ),
-                        const SizedBox(height: 10),
                         _buildActionButton(
                           'My Uploaded Notes',
                           Icons.note_alt_outlined,
@@ -265,32 +495,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 10),
                         _buildActionButton(
-                          'Change Course',
-                          Icons.swap_horiz,
-                          AppTheme.warning,
-                          () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => SwitchCourseScreen(),
-                              ),
-                            );
-                            // Refresh profile in case the course changed
-                            _loadProfile();
-                          },
-                        ),
-                        const SizedBox(height: 10),
-                        _buildActionButton(
                           'Sign Out',
                           Icons.logout,
                           AppTheme.error,
                           () async {
                             await _service.signOut();
+                            if (mounted) {
+                              Navigator.of(context).pushNamedAndRemoveUntil(
+                                '/',
+                                (route) => false,
+                              );
+                            }
                           },
                         ),
                       ],
                     ),
                   ),
+
                   const SizedBox(height: 30),
                 ],
               ),
@@ -355,26 +576,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey,
-                  fontWeight: FontWeight.w500,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A2E),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A2E),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -382,11 +605,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildDivider() {
-    return Divider(
-      height: 1,
-      color: Colors.grey.shade100,
-      indent: 64,
-    );
+    return Divider(height: 1, color: Colors.grey.shade100, indent: 64);
   }
 
   Widget _buildActionButton(
@@ -427,7 +646,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const Spacer(),
-            Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey[400]),
+            Icon(Icons.arrow_forward_ios,
+                size: 14, color: Colors.grey[400]),
           ],
         ),
       ),
