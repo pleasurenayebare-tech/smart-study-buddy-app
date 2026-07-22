@@ -4,9 +4,8 @@ import '../firebase_service.dart';
 
 class UploadScreen extends StatefulWidget {
   final String userId;
-  final String groupId;
 
-  const UploadScreen({super.key, required this.userId, required this.groupId});
+  const UploadScreen({super.key, required this.userId});
 
   @override
   State<UploadScreen> createState() => _UploadScreenState();
