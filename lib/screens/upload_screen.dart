@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 import '../firebase_service.dart';
+import '../theme.dart';
 
 class UploadScreen extends StatefulWidget {
   final String userId;
@@ -18,82 +18,119 @@ class UploadScreen extends StatefulWidget {
 
 class _UploadScreenState extends State<UploadScreen> {
   final _titleController = TextEditingController();
-  String? _pickedFilePath;
-  double? _progress;
+  final _contentController = TextEditingController();
+  bool _isLoading = false;
   final _firebaseService = FirebaseService();
 
-  Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
-    );
-    if (result != null && result.files.single.path != null) {
-      setState(() => _pickedFilePath = result.files.single.path!);
-    }
-  }
+  Future<void> _handleSave() async {
+    final title = _titleController.text.trim();
+    final content = _contentController.text.trim();
 
-  void _startUpload() {
-    if (_pickedFilePath == null || _titleController.text.isEmpty) {
+    if (title.isEmpty || content.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add a title and pick a file')),
+        const SnackBar(
+          content: Text('Please add a title and some content or a link.'),
+          backgroundColor: AppTheme.error,
+        ),
       );
       return;
     }
 
-    _firebaseService
-        .uploadNote(
-          filePath: _pickedFilePath!,
-          groupId: widget.groupId,
-          userId: widget.userId,
-          title: _titleController.text,
-        )
-        .listen(
-      (progress) {
-        setState(() => _progress = progress);
-        if (progress >= 1.0) {
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Upload complete!')),
-            );
-            Navigator.pop(context);
-          });
-        }
-      },
-      onError: (_) {
-        setState(() => _progress = null);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Upload failed. Please try again.')),
-        );
-      },
-    );
+    setState(() => _isLoading = true);
+
+    try {
+      await _firebaseService.saveNote(
+        groupId: widget.groupId,
+        userId: widget.userId,
+        title: title,
+        content: content,
+      );
+
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Note shared with your study group!'),
+          backgroundColor: AppTheme.success,
+        ),
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Upload Note')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      backgroundColor: AppTheme.background,
+      appBar: AppBar(
+        title: const Text('Share Note or Link'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const Text(
+              'Share with your group',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'You can share study tips, raw notes, or a link to a file on Google Drive/OneDrive.',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+            const SizedBox(height: 32),
+            
+            const Text(
+              'Title',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Title'),
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: _pickFile,
-              icon: const Icon(Icons.attach_file),
-              label: Text(_pickedFilePath?.split('/').last ?? 'Choose a file'),
+              decoration: InputDecoration(
+                hintText: 'e.g., Introduction to Algorithms - Week 1',
+                prefixIcon: const Icon(Icons.title, color: AppTheme.primary),
+              ),
             ),
             const SizedBox(height: 24),
-            if (_progress != null) LinearProgressIndicator(value: _progress),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _progress == null ? _startUpload : null,
-              child: const Text('Upload'),
+            
+            const Text(
+              'Content or Link',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _contentController,
+              maxLines: 8,
+              decoration: InputDecoration(
+                hintText: 'Paste your notes here, or a link to your PDF...',
+                alignLabelWithHint: true,
+              ),
+            ),
+            const SizedBox(height: 40),
+            
+            SizedBox(
+              height: 52,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _handleSave,
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        'Share Note',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+              ),
             ),
           ],
         ),

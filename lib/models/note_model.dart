@@ -1,37 +1,38 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 class NoteModel {
   final String id;
-  final String courseId;
+  final String groupId;
   final String title;
-  final String fileUrl;
-  final String uploadedBy;
+  final String content;
+  final String userId;
   final DateTime? timestamp;
 
   NoteModel({
     required this.id,
-    required this.courseId,
+    required this.groupId,
     required this.title,
-    required this.fileUrl,
-    required this.uploadedBy,
+    required this.content,
+    required this.userId,
     this.timestamp,
   });
 
   factory NoteModel.fromMap(String id, Map<String, dynamic> map) {
     return NoteModel(
       id: id,
-      courseId: map['courseId'] ?? '',
+      groupId: map['groupId'] ?? '',
       title: map['title'] ?? '',
-      fileUrl: map['fileUrl'] ?? '',
-      uploadedBy: map['uploadedBy'] ?? '',
-      timestamp: map['timestamp']?.toDate(),
+      content: map['content'] ?? map['fileUrl'] ?? '', // Fallback for old data
+      userId: map['userId'] ?? map['uploadedBy'] ?? '',
+      timestamp: (map['timestamp'] as Timestamp?)?.toDate(),
     );
   }
 
   Map<String, dynamic> toMap() => {
-    'courseId': courseId,
+    'groupId': groupId,
     'title': title,
-    'fileUrl': fileUrl,
-    'uploadedBy': uploadedBy,
+    'content': content,
+    'userId': userId,
     'timestamp': FieldValue.serverTimestamp(),
   };
 }

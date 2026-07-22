@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_study_buddy/main.dart';
+import 'package:smart_study_buddy/firebase_service.dart';
 import 'signup_screen.dart';
 import '../theme.dart';
 
@@ -14,6 +15,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _firebaseService = FirebaseService();
   bool _isLoading = false;
   bool _obscurePassword = true;
   String _errorMessage = '';
@@ -24,10 +26,10 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = '';
     });
 
-    final email = _emailController.text.trim();
+    final emailOrUsername = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty) {
+    if (emailOrUsername.isEmpty || password.isEmpty) {
       setState(() {
         _errorMessage = 'Please fill in all fields.';
         _isLoading = false;
@@ -36,33 +38,82 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
+      final result = await _firebaseService.login(
+        emailOrUsername: emailOrUsername,
         password: password,
       );
 
+      if (result != null) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = result;
+        });
+        return;
+      }
+
       if (!mounted) return;
+      
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const MainNavigation()),
       );
-    } on FirebaseAuthException catch (e) {
-      setState(() {
-        _isLoading = false;
-        if (e.code == 'user-not-found') {
-          _errorMessage = 'No account found with this email.';
-        } else if (e.code == 'wrong-password') {
-          _errorMessage = 'Incorrect password. Please try again.';
-        } else {
-          _errorMessage = e.message ?? 'Login failed. Please try again.';
-        }
-      });
     } catch (e) {
       setState(() {
         _isLoading = false;
         _errorMessage = 'Something went wrong. Please try again.';
       });
     }
+  }
+
+  void _showForgotPasswordDialog() {
+    final emailController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Enter your email to receive a password reset link.'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailController,
+              decoration: const InputDecoration(
+                hintText: 'Email address',
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (emailController.text.isNotEmpty) {
+                try {
+                  await FirebaseAuth.instance.sendPasswordResetEmail(
+                    email: emailController.text.trim(),
+                  );
+                  if (!mounted) return;
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Password reset link sent!')),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: ${e.toString()}')),
+                  );
+                }
+              }
+            },
+            child: const Text('Send Link'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -86,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(22),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.primary.withOpacity(0.4),
+                        color: AppTheme.primary.withValues(alpha: 0.4),
                         blurRadius: 15,
                         offset: const Offset(0, 8),
                       ),
@@ -141,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 40),
               // Email field
               const Text(
-                'Email',
+                'Email or Username',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
@@ -153,7 +204,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
-                  hintText: 'Enter your email',
+                  hintText: 'Enter your email or username',
                   filled: true,
                   fillColor: const Color(0xFFF8FFFE),
                   border: OutlineInputBorder(
@@ -230,6 +281,24 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 12),
+              // Forgot Password
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    _showForgotPasswordDialog();
+                  },
+                  child: const Text(
+                    'Forgot Password?',
+                    style: TextStyle(
+                      color: AppTheme.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
               // Error message
               if (_errorMessage.isNotEmpty)
                 Container(

@@ -288,40 +288,27 @@ class FirebaseService {
   }
 
   // ########################################################
-  // # UPLOAD METHODS
+  // # NOTES METHODS
   // ########################################################
 
-  // Uploads a file to Firebase Storage and saves its metadata to Firestore,
-  // scoped to a specific study group. Returns a stream of upload progress (0.0–1.0).
-  Stream<double> uploadNote({
-    required String filePath,
+  // Save a note (text or link) to Firestore (Free on Spark Plan)
+  Future<void> saveNote({
     required String groupId,
     required String userId,
     required String title,
-  }) {
-    final file = File(filePath);
-    final fileName =
-        '${DateTime.now().millisecondsSinceEpoch}_${filePath.split('/').last}';
-    final ref = FirebaseStorage.instance.ref('notes/$groupId/$fileName');
-    final uploadTask = ref.putFile(file);
-
-    uploadTask.then((snapshot) async {
-      final url = await snapshot.ref.getDownloadURL();
-      await _firestore.collection('notes').add({
-        'groupId': groupId,
-        'userId': userId,
-        'title': title,
-        'fileUrl': url,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-      await _usersRef.doc(userId).update({
-        'uploadCount': FieldValue.increment(1),
-      });
+    required String content,
+  }) async {
+    await _firestore.collection('notes').add({
+      'groupId': groupId,
+      'userId': userId,
+      'title': title,
+      'content': content, // Stores the link or the note text
+      'timestamp': FieldValue.serverTimestamp(),
     });
 
-    return uploadTask.snapshotEvents.map(
-      (event) => event.bytesTransferred / event.totalBytes,
-    );
+    await _usersRef.doc(userId).update({
+      'uploadCount': FieldValue.increment(1),
+    });
   }
 
   // Get notes for a specific study group
