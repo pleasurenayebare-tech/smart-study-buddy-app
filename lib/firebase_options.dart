@@ -27,7 +27,7 @@ class DefaultFirebaseOptions {
     projectId: 'smart-study-buddy-16111',
     storageBucket: 'smart-study-buddy-16111.firebasestorage.app',
     messagingSenderId: '318367609801',
-    appId: '1:318367609801:web:c4498bf48c98c01bbcee18',
+    appId: '1:318367609801:android:8ee151b4e308c565bcee18',
     measurementId: 'G-8S6D10GN5J',
   );
 
