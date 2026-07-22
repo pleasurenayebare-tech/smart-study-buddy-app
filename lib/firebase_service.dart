@@ -17,6 +17,13 @@ class FirebaseService {
   // Maximum members per auto-assigned study group
   static const int _groupCapacity = 8;
 
+  // Update user profile in Firestore
+  Future<void> updateUserProfile(Map<String, dynamic> data) async {
+    String? uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    await _firestore.collection('users').doc(uid).update(data);
+  }
+
   // ########################################################
   // # AUTHENTICATION METHODS
   // ########################################################
