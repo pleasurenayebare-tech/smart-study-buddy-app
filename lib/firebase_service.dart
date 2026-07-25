@@ -31,29 +31,49 @@ class FirebaseService {
   // Get current logged in user
   User? get currentUser => _auth.currentUser;
 
+  // Converts Firebase error codes into messages users can understand
+  String _friendlyAuthError(String code) {
+    switch (code) {
+      case 'email-already-in-use':
+        return 'That email is already registered. Try logging in instead.';
+      case 'weak-password':
+        return 'Password is too weak. Use at least 6 characters.';
+      case 'invalid-email':
+        return 'That email address looks invalid.';
+      case 'too-many-requests':
+        return 'Too many attempts. Please wait a few minutes and try again.';
+      case 'operation-not-allowed':
+        return 'Email/password sign-up is currently disabled. Contact the app admin.';
+      case 'network-request-failed':
+        return 'Network error. Check your internet connection.';
+      default:
+        return 'Something went wrong ($code). Please try again.';
+    }
+  }
+
   // Check if a username is unique in Firestore
- Future<bool> isUsernameUnique(String username) async {
-  final doc = await _firestore
-      .collection('usernames')
-      .doc(username.toLowerCase().trim())
-      .get();
-  return !doc.exists;
-}
+  Future<bool> isUsernameUnique(String username) async {
+    final doc = await _firestore
+        .collection('usernames')
+        .doc(username.toLowerCase().trim())
+        .get();
+    return !doc.exists;
+  }
 
   // Find a user document by username
   Future<DocumentSnapshot<Map<String, dynamic>>?> getUserByUsername(
-    String username) async {
-  final lookup = await _firestore
-      .collection('usernames')
-      .doc(username.toLowerCase().trim())
-      .get();
+      String username) async {
+    final lookup = await _firestore
+        .collection('usernames')
+        .doc(username.toLowerCase().trim())
+        .get();
 
-  if (!lookup.exists) return null;
-  final uid = lookup.data()?['uid'] as String?;
-  if (uid == null) return null;
+    if (!lookup.exists) return null;
+    final uid = lookup.data()?['uid'] as String?;
+    if (uid == null) return null;
 
-  return _usersRef.doc(uid).get();
-}
+    return _usersRef.doc(uid).get();
+  }
 
   // Sign up with email, password, a verified username, and a course.
   // Automatically assigns the new user to a study group for their course.
@@ -102,10 +122,16 @@ class FirebaseService {
       await assignToGroup(uid: user.uid, course: course);
       await _firestore.collection('usernames').doc(normalizedUsername).set({
         'uid': user.uid,
-     });
+      });
       return null; // null means success
+    } on FirebaseAuthException catch (e) {
+      return _friendlyAuthError(e.code);
+    } on FirebaseException catch (e) {
+      return 'Database error (${e.code}): ${e.message}';
     } catch (e) {
-      return e.toString(); // return error message
+      // Fallback for unexpected/JS-interop errors on web
+      return 'Something went wrong while creating your account. '
+          'Details: ${e.runtimeType} — $e';
     }
   }
 
@@ -251,8 +277,10 @@ class FirebaseService {
       }
 
       return null; // null means success
+    } on FirebaseAuthException catch (e) {
+      return _friendlyAuthError(e.code);
     } catch (e) {
-      return e.toString(); // return error message
+      return 'Login failed. Details: ${e.runtimeType} — $e';
     }
   }
 
@@ -289,10 +317,6 @@ class FirebaseService {
         .where('members', arrayContains: uid)
         .snapshots();
   }
-
-  // ########################################################
-  // # NOTES METHODS
-  // ########################################################
 
   // Save a note (text or link) to Firestore (Free on Spark Plan)
   Future<void> saveNote({
@@ -376,5 +400,34 @@ class FirebaseService {
     final DocumentSnapshot<Map<String, dynamic>> doc =
         await _usersRef.doc(uid).get();
     return doc.data();
+  }
+
+  // ########################################################
+  // # PROGRESS TRACKING METHODS
+  // ########################################################
+
+  // Save the result of a completed quiz for a user
+  Future<void> saveQuizProgress({
+    required String userId,
+    required String quizId,
+    required int score,
+    required int totalQuestions,
+  }) async {
+    await _firestore.collection('quiz_progress').add({
+      'userId': userId,
+      'quizId': quizId,
+      'score': score,
+      'totalQuestions': totalQuestions,
+      'completedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // Get all quiz progress entries for a user, most recent first
+  Stream<QuerySnapshot<Map<String, dynamic>>> getUserProgress(String userId) {
+    return _firestore
+        .collection('quiz_progress')
+        .where('userId', isEqualTo: userId)
+        .orderBy('completedAt', descending: true)
+        .snapshots();
   }
 }
