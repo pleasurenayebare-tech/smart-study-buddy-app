@@ -135,6 +135,30 @@ class _HomeScreenState extends State<HomeScreen> {
                               },
                             ),
                           ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _quickActionButton(
+                              icon: Icons.quiz,
+                              label: 'Quizzes',
+                              onTap: () {
+                                if (course == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Set your course in your profile first')),
+                                  );
+                                  return;
+                                }
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => QuizListScreen(
+                                      course: course,
+                                      userId: _currentUserId,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
                         ],
                       ),
                     ],
