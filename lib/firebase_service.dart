@@ -430,4 +430,21 @@ class FirebaseService {
         .orderBy('completedAt', descending: true)
         .snapshots();
   }
+
+  // ########################################################
+  // # QUIZ METHODS
+  // ########################################################
+
+  // Get all quizzes available for a specific course
+  Stream<QuerySnapshot<Map<String, dynamic>>> getQuizzesForCourse(String course) {
+    return _firestore
+        .collection('quizzes')
+        .where('courseId', isEqualTo: course)
+        .snapshots();
+  }
+
+  // Get a single quiz by its document ID
+  Future<DocumentSnapshot<Map<String, dynamic>>> getQuizById(String quizId) {
+    return _firestore.collection('quizzes').doc(quizId).get();
+  }
 }
