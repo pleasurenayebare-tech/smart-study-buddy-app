@@ -447,4 +447,23 @@ class FirebaseService {
   Future<DocumentSnapshot<Map<String, dynamic>>> getQuizById(String quizId) {
     return _firestore.collection('quizzes').doc(quizId).get();
   }
+// ########################################################
+  // # PROFILE PICTURE METHODS
+  // ########################################################
+
+  Future<String> uploadProfilePicture(Uint8List fileBytes, String fileName) async {
+    final uid = _auth.currentUser!.uid;
+    final ref = FirebaseStorage.instance
+        .ref()
+        .child('profile_pictures')
+        .child('$uid.jpg');
+
+    await ref.putData(fileBytes, SettableMetadata(contentType: 'image/jpeg'));
+    final downloadUrl = await ref.getDownloadURL();
+
+    await _usersRef.doc(uid).update({'photoUrl': downloadUrl});
+
+    return downloadUrl;
+  }
 }
+
