@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../firebase_service.dart';
 import '../theme.dart';
+import 'package:file_picker/file_picker.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
