@@ -4,6 +4,7 @@ import '../firebase_service.dart';
 import '../theme.dart';
 import 'upload_screen.dart';
 import 'discover_screen.dart';
+import 'quiz_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
