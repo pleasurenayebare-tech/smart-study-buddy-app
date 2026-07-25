@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import '../firebase_service.dart';
 import '../theme.dart';
-import 'package:file_picker/file_picker.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -15,6 +15,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? _profile;
   bool _isLoading = true;
   bool _isEditing = false;
+  bool _isUploadingPhoto = false;
 
   final _nameController = TextEditingController();
   final _usernameController = TextEditingController();
@@ -72,6 +73,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _pickAndUploadPhoto() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+    );
+
+    if (result == null || result.files.single.bytes == null) return;
+
+    setState(() => _isUploadingPhoto = true);
+
+    try {
+      await _service.uploadProfilePicture(
+        result.files.single.bytes!,
+        result.files.single.name,
+      );
+      await _loadProfile();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Profile picture updated!'),
+            backgroundColor: AppTheme.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to upload photo: $e'),
+            backgroundColor: AppTheme.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isUploadingPhoto = false);
     }
   }
 
@@ -164,31 +206,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   color: Colors.white,
                                   width: 3,
                                 ),
+                                image: _profile?['photoUrl'] != null
+                                    ? DecorationImage(
+                                        image: NetworkImage(_profile!['photoUrl']),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : null,
                               ),
-                              child: const Icon(
-                                Icons.person_rounded,
-                                size: 50,
-                                color: Colors.white,
-                              ),
+                              child: _isUploadingPhoto
+                                  ? const CircularProgressIndicator(color: Colors.white)
+                                  : (_profile?['photoUrl'] == null
+                                      ? const Icon(
+                                          Icons.person_rounded,
+                                          size: 50,
+                                          color: Colors.white,
+                                        )
+                                      : null),
                             ),
                             Positioned(
                               bottom: 0,
                               right: 0,
                               child: GestureDetector(
-                                onTap: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: const Text(
-                                        'Profile picture upload coming soon!',
-                                      ),
-                                      backgroundColor: AppTheme.primary,
-                                      behavior: SnackBarBehavior.floating,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
-                                  );
-                                },
+                                onTap: _isUploadingPhoto ? null : _pickAndUploadPhoto,
                                 child: Container(
                                   width: 28,
                                   height: 28,
