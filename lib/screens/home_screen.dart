@@ -360,34 +360,78 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2))],
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(color: AppTheme.info.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-            child: Icon(Icons.description, color: AppTheme.info, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-          ),
-          Icon(Icons.chevron_right, size: 18, color: Colors.grey[400]),
-        ],
+      Row(
+  children: [
+    Expanded(
+      child: _quickActionButton(
+        icon: Icons.upload_file,
+        label: 'Upload Notes',
+        onTap: () {
+          if (joinedGroups.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Join a study group first')),
+            );
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => UploadScreen(
+                userId: _currentUserId,
+                groupId: joinedGroups.first,
+              ),
+            ),
+          );
+        },
       ),
-    );
-  }
-
-  Widget _emptyStateCard(String message) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
+    ),
+    const SizedBox(width: 12),
+    Expanded(
+      child: _quickActionButton(
+        icon: Icons.people,
+        label: 'Find Partners',
+        onTap: () {
+          if (course == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Set your course in your profile first')),
+            );
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => DiscoverScreen(
+                currentUserId: _currentUserId,
+                course: course,
+              ),
+            ),
+          );
+        },
       ),
-      child: Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-    );
-  }
-}
+    ),
+    const SizedBox(width: 12),
+    Expanded(
+      child: _quickActionButton(
+        icon: Icons.quiz,
+        label: 'Quizzes',
+        onTap: () {
+          if (course == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Set your course in your profile first')),
+            );
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => QuizListScreen(
+                course: course,
+                userId: _currentUserId,
+              ),
+            ),
+          );
+        },
+      ),
+    ),
+  ],
+),
