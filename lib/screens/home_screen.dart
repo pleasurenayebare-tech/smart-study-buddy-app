@@ -4,7 +4,6 @@ import '../firebase_service.dart';
 import '../theme.dart';
 import 'upload_screen.dart';
 import 'discover_screen.dart';
-import 'quiz_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -135,39 +134,13 @@ class _HomeScreenState extends State<HomeScreen> {
                               },
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _quickActionButton(
-                              icon: Icons.quiz,
-                              label: 'Quizzes',
-                              onTap: () {
-                                if (course == null) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Set your course in your profile first')),
-                                  );
-                                  return;
-                                }
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => QuizListScreen(
-                                      course: course,
-                                      userId: _currentUserId,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
                         ],
                       ),
                     ],
                   ),
                 ),
               ),
-
               const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -182,9 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
-
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -205,7 +176,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 10)),
-
               SliverToBoxAdapter(
                 child: SizedBox(
                   height: 110,
@@ -242,9 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                 ),
               ),
-
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
-
               const SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16),
@@ -255,7 +223,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 10)),
-
               if (joinedGroups.isEmpty)
                 SliverToBoxAdapter(
                   child: Padding(
@@ -286,16 +253,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         (context, i) {
                           final data = notes[i].data();
                           final title = data['title'] ?? 'Untitled note';
-                          final content = data['content'] ?? 'No content shared.';
-                          
                           return Padding(
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                            child: _noteTile(
-                              title, 
-                              onTap: () {
-                                _showNoteDetails(title, content);
-                              },
-                            ),
+                            child: _noteTile(title),
                           );
                         },
                         childCount: notes.length,
@@ -303,7 +263,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   },
                 ),
-
               const SliverToBoxAdapter(child: SizedBox(height: 30)),
             ],
           );
@@ -318,7 +277,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onTap,
   }) {
     return Material(
-      color: Colors.white.withValues(alpha: 0.15),
+      color: Colors.white.withOpacity(0.15),
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -332,11 +291,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 label,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -352,29 +307,16 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.12),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: color.withOpacity(0.12), blurRadius: 8, offset: const Offset(0, 2))],
           border: Border.all(color: color.withOpacity(0.15)),
         ),
         child: Column(
           children: [
             Icon(icon, color: color, size: 22),
             const SizedBox(height: 6),
-            Text(
-              value,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: color),
-            ),
+            Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: color)),
             const SizedBox(height: 2),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 10, color: Colors.grey),
-            ),
+            Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.grey)),
           ],
         ),
       ),
@@ -389,13 +331,7 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -403,85 +339,39 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             width: 36,
             height: 36,
-            decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
+            decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
             child: Icon(Icons.group, color: AppTheme.primary, size: 18),
           ),
           const Spacer(),
-          Text(
-            name,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-          ),
+          Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
-          Text(
-            '$memberCount member${memberCount == 1 ? '' : 's'}',
-            style: const TextStyle(fontSize: 11, color: Colors.grey),
-          ),
+          Text('$memberCount member${memberCount == 1 ? '' : 's'}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
         ],
       ),
     );
   }
 
-  Widget _noteTile(String title, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: AppTheme.info.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(Icons.description, color: AppTheme.info, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-              ),
-            ),
-            Icon(Icons.chevron_right, size: 18, color: Colors.grey[400]),
-          ],
-        ),
+  Widget _noteTile(String title) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2))],
       ),
-    );
-  }
-
-  void _showNoteDetails(String title, String content) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: SingleChildScrollView(
-          child: Text(content),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(color: AppTheme.info.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+            child: Icon(Icons.description, color: AppTheme.info, size: 20),
           ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          ),
+          Icon(Icons.chevron_right, size: 18, color: Colors.grey[400]),
         ],
       ),
     );
@@ -496,11 +386,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      child: Text(
-        message,
-        textAlign: TextAlign.center,
-        style: const TextStyle(color: Colors.grey, fontSize: 13),
-      ),
+      child: Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey, fontSize: 13)),
     );
   }
 }
