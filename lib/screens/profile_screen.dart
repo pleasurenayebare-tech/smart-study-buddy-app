@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../firebase_service.dart';
 import '../theme.dart';
 import 'edit_profile_screen.dart';
+import 'progress_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -33,9 +34,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _openEditProfile() async {
     final updated = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => EditProfileScreen(currentProfile: _profile ?? {}),
-      ),
+      MaterialPageRoute(builder: (_) => EditProfileScreen(currentProfile: _profile ?? {})),
     );
     if (updated == true) {
       _loadProfile();
@@ -67,7 +66,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
                   children: [
-                    // Profile header
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
@@ -75,11 +73,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFF005F5F),
-                            Color(0xFF008080),
-                            Color(0xFF00A8A8),
-                          ],
+                          colors: [Color(0xFF005F5F), Color(0xFF008080), Color(0xFF00A8A8)],
                         ),
                         borderRadius: BorderRadius.only(
                           bottomLeft: Radius.circular(32),
@@ -98,10 +92,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   shape: BoxShape.circle,
                                   border: Border.all(color: Colors.white, width: 3),
                                   image: _profile?['photoUrl'] != null
-                                      ? DecorationImage(
-                                          image: NetworkImage(_profile!['photoUrl']),
-                                          fit: BoxFit.cover,
-                                        )
+                                      ? DecorationImage(image: NetworkImage(_profile!['photoUrl']), fit: BoxFit.cover)
                                       : null,
                                 ),
                                 child: _profile?['photoUrl'] == null
@@ -116,10 +107,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   child: Container(
                                     width: 28,
                                     height: 28,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFFFFD700),
-                                      shape: BoxShape.circle,
-                                    ),
+                                    decoration: const BoxDecoration(color: Color(0xFFFFD700), shape: BoxShape.circle),
                                     child: const Icon(Icons.camera_alt, size: 14, color: Colors.black87),
                                   ),
                                 ),
@@ -129,78 +117,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(height: 12),
                           Text(
                             _profile?['fullName'] ?? 'Student',
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
+                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
                           ),
                           const SizedBox(height: 4),
-                          Text(
-                            '@${_profile?['username'] ?? 'username'}',
-                            style: const TextStyle(fontSize: 14, color: Colors.white70),
-                          ),
+                          Text('@${_profile?['username'] ?? 'username'}', style: const TextStyle(fontSize: 14, color: Colors.white70)),
                           const SizedBox(height: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              _profile?['bio'] ?? 'No bio yet',
-                              style: const TextStyle(fontSize: 13, color: Colors.white),
-                            ),
+                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
+                            child: Text(_profile?['bio'] ?? 'No bio yet', style: const TextStyle(fontSize: 13, color: Colors.white)),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 20),
 
-                    // Activity stats
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Row(
                         children: [
-                          _buildActivityCard(
-                            'Notes\nShared',
-                            '${_profile?['uploadCount'] ?? 0}',
-                            Icons.upload_file,
-                            AppTheme.info,
-                          ),
+                          _buildActivityCard('Notes\nShared', '${_profile?['uploadCount'] ?? 0}', Icons.upload_file, AppTheme.info),
                           const SizedBox(width: 10),
-                          _buildActivityCard(
-                            'Groups\nJoined',
-                            '${(_profile?['joinedGroups'] as List?)?.length ?? 0}',
-                            Icons.group,
-                            AppTheme.success,
-                          ),
+                          _buildActivityCard('Groups\nJoined', '${(_profile?['joinedGroups'] as List?)?.length ?? 0}', Icons.group, AppTheme.success),
                           const SizedBox(width: 10),
-                          _buildActivityCard(
-                            'Downloads',
-                            '0',
-                            Icons.download,
-                            AppTheme.warning,
-                          ),
+                          _buildActivityCard('Downloads', '0', Icons.download, AppTheme.warning),
                         ],
                       ),
                     ),
                     const SizedBox(height: 20),
 
-                    // Info card
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2))],
                         ),
                         child: Column(
                           children: [
@@ -219,12 +171,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Actions
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Column(
                         children: [
                           _buildActionButton('Edit Profile', Icons.edit, AppTheme.primary, _openEditProfile),
+                          const SizedBox(height: 10),
+                          _buildActionButton('My Progress', Icons.trending_up, AppTheme.warning, () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const ProgressScreen()));
+                          }),
                           const SizedBox(height: 10),
                           _buildActionButton('My Uploaded Notes', Icons.note_alt_outlined, AppTheme.info, () {}),
                           const SizedBox(height: 10),
@@ -251,9 +206,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(color: color.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2)),
-          ],
+          boxShadow: [BoxShadow(color: color.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2))],
           border: Border.all(color: color.withOpacity(0.15)),
         ),
         child: Column(
@@ -277,10 +230,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             width: 36,
             height: 36,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
+            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
             child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: 12),
@@ -298,9 +248,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildDivider() {
-    return Divider(height: 1, color: Colors.grey.shade100, indent: 64);
-  }
+  Widget _buildDivider() => Divider(height: 1, color: Colors.grey.shade100, indent: 64);
 
   Widget _buildActionButton(String label, IconData icon, Color color, VoidCallback onTap) {
     return GestureDetector(
@@ -310,19 +258,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2))],
         ),
         child: Row(
           children: [
             Container(
               width: 38,
               height: 38,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
+              decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
               child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(width: 14),
