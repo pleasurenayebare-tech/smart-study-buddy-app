@@ -135,3 +135,30 @@ class FirebaseService {
       }
 
       await
+// ########################################################
+  // # QUIZ METHODS
+  // ########################################################
+
+  // Get all quizzes available for a given course
+  Stream<QuerySnapshot<Map<String, dynamic>>> getQuizzesForCourse(String course) {
+    return _firestore
+        .collection('quizzes')
+        .where('courseId', isEqualTo: course)
+        .snapshots();
+  }
+
+  // Save a completed quiz attempt's score
+  Future<void> saveQuizProgress({
+    required String userId,
+    required String quizId,
+    required int score,
+    required int totalQuestions,
+  }) async {
+    await _firestore.collection('quiz_results').add({
+      'userId': userId,
+      'quizId': quizId,
+      'score': score,
+      'totalQuestions': totalQuestions,
+      'completedAt': FieldValue.serverTimestamp(),
+    });
+  }
