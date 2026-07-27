@@ -4,13 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 class FirebaseService {
-  // Auth instance
   final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  // Firestore instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  // Users collection reference
   final CollectionReference<Map<String, dynamic>> _usersRef =
       FirebaseFirestore.instance.collection('users');
 
@@ -18,10 +13,8 @@ class FirebaseService {
   // # AUTHENTICATION METHODS
   // ########################################################
 
-  // Get current logged in user
   User? get currentUser => _auth.currentUser;
 
-  // Check if a username is unique in Firestore
   Future<bool> isUsernameUnique(String username) async {
     final querySnapshot = await _usersRef
         .where('username', isEqualTo: username.toLowerCase().trim())
@@ -29,18 +22,15 @@ class FirebaseService {
     return querySnapshot.docs.isEmpty;
   }
 
-  // Find a user document by username
   Future<DocumentSnapshot<Map<String, dynamic>>?> getUserByUsername(
       String username) async {
     final querySnapshot = await _usersRef
         .where('username', isEqualTo: username.toLowerCase().trim())
         .get();
-
     if (querySnapshot.docs.isEmpty) return null;
     return querySnapshot.docs.first;
   }
 
-  // Sign up with email, password, and a verified username
   Future<String?> signUp({
     required String fullName,
     required String username,
@@ -73,6 +63,7 @@ class FirebaseService {
         'username': normalizedUsername,
         'email': email.trim(),
         'bio': bio?.trim() ?? 'Student focused on collaborative learning.',
+        'course': null,
         'joinedGroups': [],
         'uploadCount': 0,
         'emailVerified': user.emailVerified,
@@ -80,13 +71,12 @@ class FirebaseService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      return null; // null means success
+      return null;
     } catch (e) {
-      return e.toString(); // return error message
+      return e.toString();
     }
   }
 
-  // Login using email or verified username
   Future<String?> login({
     required String emailOrUsername,
     required String password,
@@ -132,9 +122,7 @@ class FirebaseService {
         return 'Email is not verified. A verification link has been resent to your inbox.';
       }
 
-      if (profileDoc == null) {
-        profileDoc = await _usersRef.doc(user.uid).get();
-      }
+      profileDoc ??= await _usersRef.doc(user.uid).get();
 
       if (profileDoc.exists) {
         final profileData = profileDoc.data()!;
@@ -146,172 +134,4 @@ class FirebaseService {
         }
       }
 
-      return null; // null means success
-    } catch (e) {
-      return e.toString(); // return error message
-    }
-  }
-
-  // Sign out
-  Future<void> signOut() async {
-    await _auth.signOut();
-  }
-
-  // ########################################################
-  // # EDIT PROFILE METHODS
-  // ########################################################
-
-  // Updates full name, bio, and course. Returns null on success, error message on failure.
-  Future<String?> updateProfileDetails({
-    required String fullName,
-    required String bio,
-    required String course,
-  }) async {
-    try {
-      final uid = _auth.currentUser!.uid;
-      await _usersRef.doc(uid).update({
-        'fullName': fullName.trim(),
-        'bio': bio.trim().isEmpty ? 'Student focused on collaborative learning.' : bio.trim(),
-        'course': course,
-      });
-      return null;
-    } catch (e) {
-      return e.toString();
-    }
-  }
-
-  // Updates username after checking uniqueness. Returns null on success, error message on failure.
-  Future<String?> updateUsername(String newUsername) async {
-    try {
-      final normalized = newUsername.toLowerCase().trim();
-      final uid = _auth.currentUser!.uid;
-
-      final existing = await getUserByUsername(normalized);
-      if (existing != null && existing.id != uid) {
-        return 'That username is already taken.';
-      }
-
-      await _usersRef.doc(uid).update({'username': normalized});
-      return null;
-    } catch (e) {
-      return e.toString();
-    }
-  }
-
-  // Updates email. Requires the user's current password to re-authenticate first,
-  // since Firebase blocks sensitive changes without a recent login.
-  Future<String?> updateEmailAddress({
-    required String newEmail,
-    required String currentPassword,
-  }) async {
-    try {
-      final user = _auth.currentUser!;
-      final credential = EmailAuthProvider.credential(
-        email: user.email!,
-        password: currentPassword,
-      );
-      await user.reauthenticateWithCredential(credential);
-
-      await user.verifyBeforeUpdateEmail(newEmail.trim());
-      await _usersRef.doc(user.uid).update({'email': newEmail.trim()});
-
-      return null;
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'wrong-password') {
-        return 'Incorrect password.';
-      }
-      return e.message ?? 'Failed to update email.';
-    } catch (e) {
-      return e.toString();
-    }
-  }
-
-  // Uploads a new profile photo to Firebase Storage and saves the URL to Firestore.
-  Future<String?> updateProfilePhoto(File imageFile) async {
-    try {
-      final uid = _auth.currentUser!.uid;
-      final ref = FirebaseStorage.instance.ref('profile_photos/$uid.jpg');
-      await ref.putFile(imageFile);
-      final url = await ref.getDownloadURL();
-
-      await _usersRef.doc(uid).update({'photoUrl': url});
-      return url;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  // ########################################################
-  // # NOTES METHODS
-  // ########################################################
-
-  // Get all notes from Firestore
-  Stream<QuerySnapshot<Map<String, dynamic>>> getNotes() {
-    return _firestore
-        .collection('notes')
-        .orderBy('timestamp', descending: true)
-        .snapshots();
-  }
-
-  // Get notes uploaded by the current user
-  Stream<QuerySnapshot<Map<String, dynamic>>> getUserNotes(String uid) {
-    return _firestore
-        .collection('notes')
-        .where('userId', isEqualTo: uid)
-        .orderBy('timestamp', descending: true)
-        .snapshots();
-  }
-
-  // Get study groups joined by the current user
-  Stream<QuerySnapshot<Map<String, dynamic>>> getUserJoinedGroups(String uid) {
-    return _firestore
-        .collection('study_groups')
-        .where('members', arrayContains: uid)
-        .snapshots();
-  }
-
-  // ########################################################
-  // # STUDY GROUPS METHODS
-  // ########################################################
-
-  // Get all study groups from Firestore
-  Stream<QuerySnapshot<Map<String, dynamic>>> getStudyGroups() {
-    return _firestore.collection('study_groups').snapshots();
-  }
-
-  // Join a study group
-  Future<void> joinGroup(String groupId) async {
-    final String uid = _auth.currentUser!.uid;
-    await _firestore.collection('study_groups').doc(groupId).update({
-      'members': FieldValue.arrayUnion([uid]),
-    });
-    await _usersRef.doc(uid).update({
-      'joinedGroups': FieldValue.arrayUnion([groupId]),
-    });
-  }
-
-  // Leave a study group
-  Future<void> leaveGroup(String groupId) async {
-    final String uid = _auth.currentUser!.uid;
-    await _firestore.collection('study_groups').doc(groupId).update({
-      'members': FieldValue.arrayRemove([uid]),
-    });
-    await _usersRef.doc(uid).update({
-      'joinedGroups': FieldValue.arrayRemove([groupId]),
-    });
-  }
-
-  // ########################################################
-  // # USER PROFILE METHODS
-  // ########################################################
-
-  // Get current user profile from Firestore
-  Future<Map<String, dynamic>?> getUserProfile() async {
-    final String? uid = _auth.currentUser?.uid;
-    if (uid == null) return null;
-
-    final DocumentSnapshot<Map<String, dynamic>> doc =
-        await _usersRef.doc(uid).get();
-    return doc.data();
-  }
-}
+      await
