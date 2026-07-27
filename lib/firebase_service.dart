@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -15,16 +14,6 @@ class FirebaseService {
   final CollectionReference<Map<String, dynamic>> _usersRef =
       FirebaseFirestore.instance.collection('users');
 
-  // Maximum members per auto-assigned study group
-  static const int _groupCapacity = 8;
-
-  // Update user profile in Firestore
-  Future<void> updateUserProfile(Map<String, dynamic> data) async {
-    String? uid = _auth.currentUser?.uid;
-    if (uid == null) return;
-    await _firestore.collection('users').doc(uid).update(data);
-  }
-
   // ########################################################
   // # AUTHENTICATION METHODS
   // ########################################################
@@ -32,58 +21,31 @@ class FirebaseService {
   // Get current logged in user
   User? get currentUser => _auth.currentUser;
 
-  // Converts Firebase error codes into messages users can understand
-  String _friendlyAuthError(String code) {
-    switch (code) {
-      case 'email-already-in-use':
-        return 'That email is already registered. Try logging in instead.';
-      case 'weak-password':
-        return 'Password is too weak. Use at least 6 characters.';
-      case 'invalid-email':
-        return 'That email address looks invalid.';
-      case 'too-many-requests':
-        return 'Too many attempts. Please wait a few minutes and try again.';
-      case 'operation-not-allowed':
-        return 'Email/password sign-up is currently disabled. Contact the app admin.';
-      case 'network-request-failed':
-        return 'Network error. Check your internet connection.';
-      default:
-        return 'Something went wrong ($code). Please try again.';
-    }
-  }
-
   // Check if a username is unique in Firestore
   Future<bool> isUsernameUnique(String username) async {
-    final doc = await _firestore
-        .collection('usernames')
-        .doc(username.toLowerCase().trim())
+    final querySnapshot = await _usersRef
+        .where('username', isEqualTo: username.toLowerCase().trim())
         .get();
-    return !doc.exists;
+    return querySnapshot.docs.isEmpty;
   }
 
   // Find a user document by username
   Future<DocumentSnapshot<Map<String, dynamic>>?> getUserByUsername(
       String username) async {
-    final lookup = await _firestore
-        .collection('usernames')
-        .doc(username.toLowerCase().trim())
+    final querySnapshot = await _usersRef
+        .where('username', isEqualTo: username.toLowerCase().trim())
         .get();
 
-    if (!lookup.exists) return null;
-    final uid = lookup.data()?['uid'] as String?;
-    if (uid == null) return null;
-
-    return _usersRef.doc(uid).get();
+    if (querySnapshot.docs.isEmpty) return null;
+    return querySnapshot.docs.first;
   }
 
-  // Sign up with email, password, a verified username, and a course.
-  // Automatically assigns the new user to a study group for their course.
+  // Sign up with email, password, and a verified username
   Future<String?> signUp({
     required String fullName,
     required String username,
     required String email,
     required String password,
-    required String course,
     String? bio,
   }) async {
     try {
@@ -110,7 +72,6 @@ class FirebaseService {
         'fullName': fullName.trim(),
         'username': normalizedUsername,
         'email': email.trim(),
-        'course': course,
         'bio': bio?.trim() ?? 'Student focused on collaborative learning.',
         'joinedGroups': [],
         'uploadCount': 0,
@@ -119,99 +80,10 @@ class FirebaseService {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // Automatically assign the new user to a study group for their course
-      await assignToGroup(uid: user.uid, course: course);
-      await _firestore.collection('usernames').doc(normalizedUsername).set({
-        'uid': user.uid,
-      });
       return null; // null means success
-    } on FirebaseAuthException catch (e) {
-      return _friendlyAuthError(e.code);
-    } on FirebaseException catch (e) {
-      return 'Database error (${e.code}): ${e.message}';
     } catch (e) {
-      // Fallback for unexpected/JS-interop errors on web
-      return 'Something went wrong while creating your account. '
-          'Details: ${e.runtimeType} — $e';
+      return e.toString(); // return error message
     }
-  }
-
-  // Finds a study group for this course with room, or creates a new one,
-  // and adds the user to it. Runs as a transaction to avoid race conditions
-  // when multiple students sign up for the same course at once.
-  Future<void> assignToGroup({required String uid, required String course}) async {
-    final groupsRef = _firestore.collection('study_groups');
-
-    await _firestore.runTransaction((transaction) async {
-      final candidates = await groupsRef
-          .where('course', isEqualTo: course)
-          .where('memberCount', isLessThan: _groupCapacity)
-          .limit(1)
-          .get();
-
-      DocumentReference<Map<String, dynamic>> groupRef;
-
-      if (candidates.docs.isNotEmpty) {
-        groupRef = candidates.docs.first.reference;
-        transaction.update(groupRef, {
-          'members': FieldValue.arrayUnion([uid]),
-          'memberCount': FieldValue.increment(1),
-        });
-      } else {
-        groupRef = groupsRef.doc();
-        final groupNumber = DateTime.now().millisecondsSinceEpoch % 1000;
-        transaction.set(groupRef, {
-          'name': '$course Study Group #$groupNumber',
-          'course': course,
-          'members': [uid],
-          'memberCount': 1,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-      }
-
-      transaction.update(_usersRef.doc(uid), {
-        'joinedGroups': FieldValue.arrayUnion([groupRef.id]),
-      });
-    });
-  }
-
-  // Switch a user to a new course: leaves their current course-based group(s)
-  // and gets auto-assigned to a group for the new course.
-  Future<void> switchCourse({required String uid, required String newCourse}) async {
-    final userDoc = await _usersRef.doc(uid).get();
-    final userData = userDoc.data();
-    if (userData == null) return;
-
-    final oldCourse = userData['course'] as String?;
-    final joinedGroups = List<String>.from(userData['joinedGroups'] ?? []);
-
-    // Find and leave any group tied to the old course
-    if (oldCourse != null && joinedGroups.isNotEmpty) {
-      final groupsRef = _firestore.collection('study_groups');
-      final oldCourseGroups = await groupsRef
-          .where('course', isEqualTo: oldCourse)
-          .where('members', arrayContains: uid)
-          .get();
-
-      for (final groupDoc in oldCourseGroups.docs) {
-        await _firestore.runTransaction((transaction) async {
-          transaction.update(groupDoc.reference, {
-            'members': FieldValue.arrayRemove([uid]),
-            'memberCount': FieldValue.increment(-1),
-          });
-        });
-
-        await _usersRef.doc(uid).update({
-          'joinedGroups': FieldValue.arrayRemove([groupDoc.id]),
-        });
-      }
-    }
-
-    // Update the user's course field
-    await _usersRef.doc(uid).update({'course': newCourse});
-
-    // Assign to a group for the new course
-    await assignToGroup(uid: uid, course: newCourse);
   }
 
   // Login using email or verified username
@@ -254,14 +126,11 @@ class FirebaseService {
 
       await user.reload();
 
-      // Commented out to bypass verification for development
-      /*
       if (!user.emailVerified) {
         await user.sendEmailVerification();
         await _auth.signOut();
         return 'Email is not verified. A verification link has been resent to your inbox.';
       }
-      */
 
       if (profileDoc == null) {
         profileDoc = await _usersRef.doc(user.uid).get();
@@ -278,16 +147,98 @@ class FirebaseService {
       }
 
       return null; // null means success
-    } on FirebaseAuthException catch (e) {
-      return _friendlyAuthError(e.code);
     } catch (e) {
-      return 'Login failed. Details: ${e.runtimeType} — $e';
+      return e.toString(); // return error message
     }
   }
 
   // Sign out
   Future<void> signOut() async {
     await _auth.signOut();
+  }
+
+  // ########################################################
+  // # EDIT PROFILE METHODS
+  // ########################################################
+
+  // Updates full name, bio, and course. Returns null on success, error message on failure.
+  Future<String?> updateProfileDetails({
+    required String fullName,
+    required String bio,
+    required String course,
+  }) async {
+    try {
+      final uid = _auth.currentUser!.uid;
+      await _usersRef.doc(uid).update({
+        'fullName': fullName.trim(),
+        'bio': bio.trim().isEmpty ? 'Student focused on collaborative learning.' : bio.trim(),
+        'course': course,
+      });
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  // Updates username after checking uniqueness. Returns null on success, error message on failure.
+  Future<String?> updateUsername(String newUsername) async {
+    try {
+      final normalized = newUsername.toLowerCase().trim();
+      final uid = _auth.currentUser!.uid;
+
+      final existing = await getUserByUsername(normalized);
+      if (existing != null && existing.id != uid) {
+        return 'That username is already taken.';
+      }
+
+      await _usersRef.doc(uid).update({'username': normalized});
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  // Updates email. Requires the user's current password to re-authenticate first,
+  // since Firebase blocks sensitive changes without a recent login.
+  Future<String?> updateEmailAddress({
+    required String newEmail,
+    required String currentPassword,
+  }) async {
+    try {
+      final user = _auth.currentUser!;
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
+      );
+      await user.reauthenticateWithCredential(credential);
+
+      await user.verifyBeforeUpdateEmail(newEmail.trim());
+      await _usersRef.doc(user.uid).update({'email': newEmail.trim()});
+
+      return null;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password') {
+        return 'Incorrect password.';
+      }
+      return e.message ?? 'Failed to update email.';
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  // Uploads a new profile photo to Firebase Storage and saves the URL to Firestore.
+  Future<String?> updateProfilePhoto(File imageFile) async {
+    try {
+      final uid = _auth.currentUser!.uid;
+      final ref = FirebaseStorage.instance.ref('profile_photos/$uid.jpg');
+      await ref.putFile(imageFile);
+      final url = await ref.getDownloadURL();
+
+      await _usersRef.doc(uid).update({'photoUrl': url});
+      return url;
+    } catch (e) {
+      return null;
+    }
   }
 
   // ########################################################
@@ -317,45 +268,6 @@ class FirebaseService {
         .collection('study_groups')
         .where('members', arrayContains: uid)
         .snapshots();
-  }
-
-  // Save a note (text or link) to Firestore (Free on Spark Plan)
-  Future<void> saveNote({
-    required String groupId,
-    required String userId,
-    required String title,
-    required String content,
-  }) async {
-    await _firestore.collection('notes').add({
-      'groupId': groupId,
-      'userId': userId,
-      'title': title,
-      'content': content, // Stores the link or the note text
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-
-    await _usersRef.doc(userId).update({
-      'uploadCount': FieldValue.increment(1),
-    });
-  }
-
-  // Get notes for a specific study group
-  Stream<QuerySnapshot<Map<String, dynamic>>> getNotesForGroup(String groupId) {
-    return _firestore
-        .collection('notes')
-        .where('groupId', isEqualTo: groupId)
-        .orderBy('timestamp', descending: true)
-        .snapshots();
-  }
-
-  // ########################################################
-  // # DISCOVERY METHODS
-  // ########################################################
-
-  // Find other users taking the same course
-  Stream<QuerySnapshot<Map<String, dynamic>>> discoverUsersByCourse(
-      String course, String currentUserId) {
-    return _usersRef.where('course', isEqualTo: course).snapshots();
   }
 
   // ########################################################
@@ -401,72 +313,5 @@ class FirebaseService {
     final DocumentSnapshot<Map<String, dynamic>> doc =
         await _usersRef.doc(uid).get();
     return doc.data();
-  }
-
-  // ########################################################
-  // # PROFILE PICTURE METHODS
-  // ########################################################
-
-  // Uploads a profile picture to Firebase Storage and saves the URL
-  // to the user's Firestore document.
-  Future<String> uploadProfilePicture(Uint8List fileBytes, String fileName) async {
-    final uid = _auth.currentUser!.uid;
-    final ref = FirebaseStorage.instance
-        .ref()
-        .child('profile_pictures')
-        .child('$uid.jpg');
-
-    await ref.putData(fileBytes, SettableMetadata(contentType: 'image/jpeg'));
-    final downloadUrl = await ref.getDownloadURL();
-
-    await _usersRef.doc(uid).update({'photoUrl': downloadUrl});
-
-    return downloadUrl;
-  }
-
-  // ########################################################
-  // # PROGRESS TRACKING METHODS
-  // ########################################################
-
-  // Save the result of a completed quiz for a user
-  Future<void> saveQuizProgress({
-    required String userId,
-    required String quizId,
-    required int score,
-    required int totalQuestions,
-  }) async {
-    await _firestore.collection('quiz_progress').add({
-      'userId': userId,
-      'quizId': quizId,
-      'score': score,
-      'totalQuestions': totalQuestions,
-      'completedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  // Get all quiz progress entries for a user, most recent first
-  Stream<QuerySnapshot<Map<String, dynamic>>> getUserProgress(String userId) {
-    return _firestore
-        .collection('quiz_progress')
-        .where('userId', isEqualTo: userId)
-        .orderBy('completedAt', descending: true)
-        .snapshots();
-  }
-
-  // ########################################################
-  // # QUIZ METHODS
-  // ########################################################
-
-  // Get all quizzes available for a specific course
-  Stream<QuerySnapshot<Map<String, dynamic>>> getQuizzesForCourse(String course) {
-    return _firestore
-        .collection('quizzes')
-        .where('courseId', isEqualTo: course)
-        .snapshots();
-  }
-
-  // Get a single quiz by its document ID
-  Future<DocumentSnapshot<Map<String, dynamic>>> getQuizById(String quizId) {
-    return _firestore.collection('quizzes').doc(quizId).get();
   }
 }
