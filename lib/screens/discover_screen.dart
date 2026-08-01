@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../firebase_service.dart';
+import 'chat_screen.dart';
 
 class DiscoverScreen extends StatelessWidget {
   final String currentUserId;
@@ -45,9 +46,17 @@ class DiscoverScreen extends StatelessWidget {
                 ),
                 title: Text(name),
                 subtitle: Text('@$username'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const Icon(Icons.message_outlined),
                 onTap: () {
-                  // navigate to their profile later
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChatScreen(
+                        otherUserId: docs[i].id,
+                        otherUserName: name,
+                      ),
+                    ),
+                  );
                 },
               );
             },
