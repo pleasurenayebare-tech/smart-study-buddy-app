@@ -3,6 +3,7 @@ import '../firebase_service.dart';
 import '../theme.dart';
 import 'edit_profile_screen.dart';
 import 'progress_screen.dart';
+import 'switch_course_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -184,6 +185,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _buildActionButton('My Uploaded Notes', Icons.note_alt_outlined, AppTheme.info, () {}),
                           const SizedBox(height: 10),
                           _buildActionButton('My Study Groups', Icons.group_outlined, AppTheme.success, () {}),
+                          const SizedBox(height: 10),
+                          _buildActionButton('Switch Course', Icons.school_outlined, AppTheme.warning, () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const SwitchCourseScreen()));
+                          }),
                           const SizedBox(height: 10),
                           _buildActionButton('Sign Out', Icons.logout, AppTheme.error, () async {
                             await _service.signOut();
