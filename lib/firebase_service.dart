@@ -383,4 +383,55 @@ class FirebaseService {
         .orderBy('completedAt', descending: true)
         .snapshots();
   }
+
+  // ########################################################
+  // # MESSAGING METHODS
+  // ########################################################
+
+  String getConversationId(String uid1, String uid2) {
+    final ids = [uid1, uid2]..sort();
+    return '${ids[0]}_${ids[1]}';
+  }
+
+  Future<void> sendMessage({
+    required String receiverId,
+    required String receiverName,
+    required String text,
+  }) async {
+    final uid = _auth.currentUser!.uid;
+    final conversationId = getConversationId(uid, receiverId);
+
+    final senderProfile = await getUserProfile();
+    final senderName = senderProfile?['fullName'] ?? 'Student';
+
+    await _firestore.collection('messages').add({
+      'conversationId': conversationId,
+      'participants': [uid, receiverId],
+      'senderId': uid,
+      'receiverId': receiverId,
+      'text': text.trim(),
+      'participantNames': {
+        uid: senderName,
+        receiverId: receiverName,
+      },
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> getMessagesForConversation(
+      String conversationId) {
+    return _firestore
+        .collection('messages')
+        .where('conversationId', isEqualTo: conversationId)
+        .orderBy('timestamp')
+        .snapshots();
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> getUserConversations(String uid) {
+    return _firestore
+        .collection('messages')
+        .where('participants', arrayContains: uid)
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  }
 }
