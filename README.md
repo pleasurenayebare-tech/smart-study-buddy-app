@@ -1,7 +1,8 @@
 # Smart Study Buddy — Flutter App
 
 A collaborative mobile platform for Makerere University students to share
-notes, past papers, and connect in course-based study groups.
+notes, connect in course-based study groups, message study partners, and
+test their knowledge with course quizzes.
 
 ## Tech Stack
 - Flutter (Dart)
@@ -12,42 +13,56 @@ notes, past papers, and connect in course-based study groups.
 
 ## Project Structure
 lib/
-├── screens/        # All app screens
-├── services/       # Firebase service classes
-├── models/         # Data models
-├── widgets/        # Reusable UI components
-├── theme.dart      # App colors and theme
-└── main.dart       # App entry point
+├── screens/ # All app screens
+├── models/ # Data models (quiz, progress, course)
+├── widgets/ # Reusable UI components
+├── firebase_service.dart # All Firebase Auth/Firestore/Storage logic
+├── theme.dart # App colors and theme
+└── main.dart # App entry point
 
 ## Team Members
 | Member | Role |
 |--------|------|
 | Nayebare Pleasure | Project Lead & App Architecture |
-| Mukobeza Nambi Anna | UI Developer — Authentication |
-| Alinaitwe Queen Denise | UI Developer — Core Screens |
+| Mukobeza Nambi Anna | UI Developer — Authentication & Profile |
+| Alinaitwe Queen Denise | UI Developer — Core Screens & Quiz System |
 | Kimara Cyrus Kilibo | Backend & Database |
 | Halema Jesse | Testing & Integration |
 
-## Screens
-| Screen | Developer | Status |
-|--------|-----------|--------|
-| Splash Screen | Member 1 | ✅ Done |
-| Bottom Navigation | Member 1 | ✅ Done |
-| Login Screen | Member 2 | ✅ Done |
-| Sign Up Screen | Member 2 | ✅ Done |
-| Home Screen | Member 3 | ✅ Done |
-| Study Groups | Member 3 | ✅ Done |
-| Messages | Member 4 | ✅ Done |
-| Notifications | Member 4 | ✅ Done |
-| Profile Dashboard | Member 4 | ✅ Done |
-| Course Selection | Member 1 | ✅ Done |
-| Firebase Integration | Member 4 | ✅ Done |
-| Theme & UI Polish | Member 5 | ✅ Done |
-| Profile Redesign | Member 5 | ✅ Done |
-| Quiz System | Member 5 | 🔄 Week 3 |
-| Upload Feature | Member 2 | 🔄 Week 3 |
-| User Discovery | Member 3 | 🔄 Week 3 |
-| Progress Tracking | Member 5 | 🔄 Week 4 |
+## Features
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Splash Screen | ✅ Done | |
+| Bottom Navigation | ✅ Done | |
+| Sign Up / Login | ✅ Done | Supports login via email or username; friendly error messages |
+| Auto Study Group Assignment | ✅ Done | New users are automatically placed into a course-based group on signup |
+| Home Dashboard | ✅ Done | Live Firestore data — profile, groups, notes, stats |
+| Study Groups (auto-assigned) | ✅ Done | Auto-assignment and group membership fully connected to Firestore |
+| Switch Course | ✅ Done | Leaves old course group, joins/creates a group for the new course |
+| Quiz System | ✅ Done | Course-based quizzes, scoring, and progress saved to Firestore |
+| Progress Tracking | ✅ Done | Visual breakdown of notes shared, groups joined, profile completeness |
+| Profile Editing | ✅ Done | Edit name, username, bio |
+| Profile Picture Upload | ✅ Done | Firebase Storage integration |
+| Real-time Messaging | ✅ Done | 1-to-1 chat with study partners found via Discover |
+| Discover Study Partners | ✅ Done | Find and message other students in your course |
+| Notes Upload | ✅ Done | Text/link notes shared within a study group |
+| Notifications | 🔲 UI only | Static placeholder UI; not yet connected to real events |
+| Standalone Groups Browser | 🔲 Known limitation | The Groups tab currently shows sample data; auto-assigned groups are visible on the Home screen |
+
+## Known Limitations
+Being transparent about current scope:
+- The **Groups tab** (separate from auto-assigned groups on Home) still displays placeholder data and is not yet wired to Firestore — planned for a future iteration.
+- **Notifications** are UI-only and not yet driven by real app events.
+
+## Firestore Collections
+| Collection | Purpose |
+|---|---|
+| `users` | Student profiles: name, username, email, course, bio, joinedGroups, photoUrl |
+| `groups` | Course-based study groups: members, memberCount, course |
+| `notes` | Shared notes/links per group |
+| `quizzes` | Course quizzes: questions, options, correct answers |
+| `quiz_results` | Saved quiz attempts: score, user, timestamp |
+| `messages` | 1-to-1 chat messages between students |
 
 ## Project Website
 https://pleasurenayebare-tech.github.io/smart-study-buddy.github.io/
