@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../theme.dart';
 import '../firebase_service.dart';
+import 'chat_screen.dart';
 
 class MessagesScreen extends StatefulWidget {
   const MessagesScreen({super.key});
@@ -11,21 +13,12 @@ class MessagesScreen extends StatefulWidget {
 
 class _MessagesScreenState extends State<MessagesScreen> {
   final FirebaseService _service = FirebaseService();
-  String _userName = 'Student';
+  late final String _myUid;
 
   @override
   void initState() {
     super.initState();
-    _loadUserName();
-  }
-
-  Future<void> _loadUserName() async {
-    final profile = await _service.getUserProfile();
-    if (profile != null && mounted) {
-      setState(() {
-        _userName = profile['fullName'] ?? profile['username'] ?? 'Student';
-      });
-    }
+    _myUid = FirebaseAuth.instance.currentUser!.uid;
   }
 
   @override
@@ -36,122 +29,88 @@ class _MessagesScreenState extends State<MessagesScreen> {
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
       ),
-      body: Column(
-        children: [
-          // Search bar
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: AppTheme.background,
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search conversations',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppTheme.border),
+      body: StreamBuilder(
+        stream: _service.getUserConversations(_myUid),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final docs = snapshot.data!.docs;
+
+          // Group messages by conversationId, keeping only the most recent
+          // message per conversation for the list preview.
+          final Map<String, Map<String, dynamic>> latestByConversation = {};
+          for (final doc in docs) {
+            final data = doc.data();
+            final convId = data['conversationId'] as String;
+            if (!latestByConversation.containsKey(convId)) {
+              latestByConversation[convId] = data;
+            }
+          }
+
+          final conversations = latestByConversation.values.toList();
+
+          if (conversations.isEmpty) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'No conversations yet. Find a study partner and say hello!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
-            ),
-          ),
-          // Messages list
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(8),
-              children: [
-                _buildMessageConversation(
-                  'Nayebare Pleasure',
-                  'Hey, did you understand the last lecture?',
-                  '2 min ago',
-                  AppTheme.info,
-                  Icons.person,
-                ),
-                _buildMessageConversation(
-                  'BCS 1101 Study Group',
-                  'Let\'s schedule a study session',
-                  '1 hour ago',
-                  AppTheme.success,
-                  Icons.group,
-                ),
-                _buildMessageConversation(
-                  'Mukobeza Nambi Anna',
-                  'Can I share the past papers with you?',
-                  '3 hours ago',
-                  AppTheme.purple,
-                  Icons.person,
-                ),
-                _buildMessageConversation(
-                  'Class Discussion',
-                  'New message from 5 members',
-                  '1 day ago',
-                  AppTheme.warning,
-                  Icons.people,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _showNewMessageDialog(context);
-        },
-        backgroundColor: AppTheme.success,
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.message),
-      ),
-    );
-  }
+            );
+          }
 
-  Widget _buildMessageConversation(String name, String lastMessage, String time,
-      Color color, IconData icon) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: color,
-          child: Icon(icon, color: Colors.white),
-        ),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(lastMessage, maxLines: 1, overflow: TextOverflow.ellipsis),
-        trailing: Text(time, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        onTap: () {},
-      ),
-    );
-  }
+          return ListView.builder(
+            padding: const EdgeInsets.all(8),
+            itemCount: conversations.length,
+            itemBuilder: (context, i) {
+              final data = conversations[i];
+              final participants = List<String>.from(data['participants']);
+              final otherUserId =
+                  participants.firstWhere((id) => id != _myUid);
+              final names = Map<String, dynamic>.from(
+                  data['participantNames'] ?? {});
+              final otherUserName = names[otherUserId] ?? 'Student';
+              final lastMessage = data['text'] ?? '';
 
-  void _showNewMessageDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Start a New Conversation'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView(
-              shrinkWrap: true,
-              children: [
-                ListTile(
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                child: ListTile(
                   leading: CircleAvatar(
                     backgroundColor: AppTheme.info,
-                    child: const Icon(Icons.person, color: Colors.white),
+                    child: Text(
+                      otherUserName.isNotEmpty ? otherUserName[0] : '?',
+                      style: const TextStyle(color: Colors.white),
+                    ),
                   ),
-                  title: const Text('Direct Message'),
-                  onTap: () => Navigator.pop(context),
-                ),
-                ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: AppTheme.success,
-                    child: const Icon(Icons.group, color: Colors.white),
+                  title: Text(otherUserName,
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(
+                    lastMessage,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  title: const Text('Start Group Chat'),
-                  onTap: () => Navigator.pop(context),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatScreen(
+                          otherUserId: otherUserId,
+                          otherUserName: otherUserName,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              ],
-            ),
-          ),
-        );
-      },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
