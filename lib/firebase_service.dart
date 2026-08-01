@@ -314,16 +314,11 @@ class FirebaseService {
   // # DISCOVERY METHODS
   // ########################################################
 
-  Stream<List<Map<String, dynamic>>> discoverUsersByCourse(
+  Stream<QuerySnapshot<Map<String, dynamic>>> discoverUsersByCourse(
       String course, String currentUserId) {
-    return _usersRef.where('course', isEqualTo: course).snapshots().map(
-          (snap) => snap.docs
-              .where((doc) => doc.id != currentUserId)
-              .map((doc) => {...doc.data(), 'uid': doc.id})
-              .toList(),
-        );
+    return _usersRef.where('course', isEqualTo: course).snapshots();
   }
-
+  
   // ########################################################
   // # NOTES METHODS
   // ########################################################
