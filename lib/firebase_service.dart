@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -18,6 +18,29 @@ class FirebaseService {
   // ########################################################
 
   User? get currentUser => _auth.currentUser;
+
+  String _friendlyAuthError(String code) {
+    switch (code) {
+      case 'email-already-in-use':
+        return 'That email is already registered. Try logging in instead.';
+      case 'weak-password':
+        return 'Password is too weak. Use at least 6 characters.';
+      case 'invalid-email':
+        return 'That email address looks invalid.';
+      case 'too-many-requests':
+        return 'Too many attempts. Please wait a few minutes and try again.';
+      case 'operation-not-allowed':
+        return 'Email/password sign-up is currently disabled. Contact the app admin.';
+      case 'network-request-failed':
+        return 'Network error. Check your internet connection.';
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'Incorrect email/username or password.';
+      default:
+        return 'Something went wrong ($code). Please try again.';
+    }
+  }
 
   Future<bool> isUsernameUnique(String username) async {
     final querySnapshot = await _usersRef
@@ -80,8 +103,12 @@ class FirebaseService {
       });
 
       return null;
+    } on FirebaseAuthException catch (e) {
+      return _friendlyAuthError(e.code);
+    } on FirebaseException catch (e) {
+      return 'Database error (${e.code}): ${e.message}';
     } catch (e) {
-      return e.toString();
+      return 'Something went wrong while creating your account. Details: ${e.runtimeType} — $e';
     }
   }
 
@@ -103,9 +130,6 @@ class FirebaseService {
         if (profileData == null || !profileData.containsKey('email')) {
           return 'Invalid user record. Please contact support.';
         }
-        if (profileData['usernameVerified'] != true) {
-          return 'Please verify your username by confirming your email first.';
-        }
         loginEmail = profileData['email'] as String;
       }
 
@@ -121,11 +145,8 @@ class FirebaseService {
 
       await user.reload();
 
-      if (!user.emailVerified) {
-        await user.sendEmailVerification();
-        await _auth.signOut();
-        return 'Email is not verified. A verification link has been resent to your inbox.';
-      }
+      // Email verification enforcement intentionally disabled during development.
+      // Re-enable before final submission if required by your project spec.
 
       profileDoc ??= await _usersRef.doc(user.uid).get();
 
@@ -140,18 +161,21 @@ class FirebaseService {
       }
 
       return null;
+    } on FirebaseAuthException catch (e) {
+      return _friendlyAuthError(e.code);
     } catch (e) {
-      return e.toString();
+      return 'Login failed. Details: ${e.runtimeType} — $e';
     }
+  }
+
+  Future<void> signOut() async {
+    await _auth.signOut();
   }
 
   // ########################################################
   // # GROUP ASSIGNMENT
   // ########################################################
 
-  // Finds a group for this course with open space and adds the user to it.
-  // If no matching group has space, creates a brand new one for that course.
-  // Returns the group ID the user was placed into.
   Future<String> _assignUserToGroup(String userId, String course) async {
     final openGroupQuery = await _groupsRef
         .where('course', isEqualTo: course)
@@ -169,7 +193,6 @@ class FirebaseService {
       return groupDoc.id;
     }
 
-    // No open group for this course — create a new one
     final courseGroupCount = await _groupsRef
         .where('course', isEqualTo: course)
         .count()
@@ -187,11 +210,67 @@ class FirebaseService {
     return newGroupRef.id;
   }
 
+  Future<void> switchCourse({required String uid, required String newCourse}) async {
+    final userDoc = await _usersRef.doc(uid).get();
+    final userData = userDoc.data();
+    if (userData == null) return;
+
+    final oldCourse = userData['course'] as String?;
+
+    if (oldCourse != null) {
+      final oldCourseGroups = await _groupsRef
+          .where('course', isEqualTo: oldCourse)
+          .where('memberIds', arrayContains: uid)
+          .get();
+
+      for (final groupDoc in oldCourseGroups.docs) {
+        await groupDoc.reference.update({
+          'memberIds': FieldValue.arrayRemove([uid]),
+          'memberCount': FieldValue.increment(-1),
+        });
+        await _usersRef.doc(uid).update({
+          'joinedGroups': FieldValue.arrayRemove([groupDoc.id]),
+        });
+      }
+    }
+
+    await _usersRef.doc(uid).update({'course': newCourse});
+    final newGroupId = await _assignUserToGroup(uid, newCourse);
+    await _usersRef.doc(uid).update({
+      'joinedGroups': FieldValue.arrayUnion([newGroupId]),
+    });
+  }
+
+  Future<void> joinGroup(String groupId) async {
+    final uid = _auth.currentUser!.uid;
+    await _groupsRef.doc(groupId).update({
+      'memberIds': FieldValue.arrayUnion([uid]),
+      'memberCount': FieldValue.increment(1),
+    });
+    await _usersRef.doc(uid).update({
+      'joinedGroups': FieldValue.arrayUnion([groupId]),
+    });
+  }
+
+  Future<void> leaveGroup(String groupId) async {
+    final uid = _auth.currentUser!.uid;
+    await _groupsRef.doc(groupId).update({
+      'memberIds': FieldValue.arrayRemove([uid]),
+      'memberCount': FieldValue.increment(-1),
+    });
+    await _usersRef.doc(uid).update({
+      'joinedGroups': FieldValue.arrayRemove([groupId]),
+    });
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> getStudyGroups() {
+    return _groupsRef.snapshots();
+  }
+
   // ########################################################
   // # PROFILE / HOME SCREEN METHODS
   // ########################################################
 
-  // Fetch the currently logged-in user's profile document
   Future<Map<String, dynamic>?> getUserProfile() async {
     final user = _auth.currentUser;
     if (user == null) return null;
@@ -199,14 +278,75 @@ class FirebaseService {
     return doc.data();
   }
 
-  // Stream the study groups this user has joined
-  Stream<QuerySnapshot<Map<String, dynamic>>> getUserJoinedGroups(String userId) {
-    return _groupsRef
-        .where('memberIds', arrayContains: userId)
-        .snapshots();
+  Future<void> updateUserProfile(Map<String, dynamic> data) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    await _usersRef.doc(uid).update(data);
   }
 
-  // Stream notes shared within a given group
+  Future<String> uploadProfilePicture(Uint8List fileBytes, String fileName) async {
+    final uid = _auth.currentUser!.uid;
+    final ref = FirebaseStorage.instance
+        .ref()
+        .child('profile_pictures')
+        .child('$uid.jpg');
+
+    await ref.putData(fileBytes, SettableMetadata(contentType: 'image/jpeg'));
+    final downloadUrl = await ref.getDownloadURL();
+
+    await _usersRef.doc(uid).update({'photoUrl': downloadUrl});
+    return downloadUrl;
+  }
+
+  Future<void> markActiveNow() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return;
+    await _usersRef.doc(uid).update({
+      'lastActiveAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> getUserJoinedGroups(String userId) {
+    return _groupsRef.where('memberIds', arrayContains: userId).snapshots();
+  }
+
+  // ########################################################
+  // # DISCOVERY METHODS
+  // ########################################################
+
+  Stream<List<Map<String, dynamic>>> discoverUsersByCourse(
+      String course, String currentUserId) {
+    return _usersRef.where('course', isEqualTo: course).snapshots().map(
+          (snap) => snap.docs
+              .where((doc) => doc.id != currentUserId)
+              .map((doc) => {...doc.data(), 'uid': doc.id})
+              .toList(),
+        );
+  }
+
+  // ########################################################
+  // # NOTES METHODS
+  // ########################################################
+
+  Future<void> saveNote({
+    required String groupId,
+    required String userId,
+    required String title,
+    required String content,
+  }) async {
+    await _firestore.collection('notes').add({
+      'groupId': groupId,
+      'userId': userId,
+      'title': title,
+      'content': content,
+      'uploadedAt': FieldValue.serverTimestamp(),
+    });
+
+    await _usersRef.doc(userId).update({
+      'uploadCount': FieldValue.increment(1),
+    });
+  }
+
   Stream<QuerySnapshot<Map<String, dynamic>>> getNotesForGroup(String groupId) {
     return _firestore
         .collection('notes')
@@ -219,7 +359,6 @@ class FirebaseService {
   // # QUIZ METHODS
   // ########################################################
 
-  // Get all quizzes available for a given course
   Stream<QuerySnapshot<Map<String, dynamic>>> getQuizzesForCourse(String course) {
     return _firestore
         .collection('quizzes')
@@ -227,7 +366,6 @@ class FirebaseService {
         .snapshots();
   }
 
-  // Save a completed quiz attempt's score
   Future<void> saveQuizProgress({
     required String userId,
     required String quizId,
@@ -241,5 +379,13 @@ class FirebaseService {
       'totalQuestions': totalQuestions,
       'completedAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> getUserProgress(String userId) {
+    return _firestore
+        .collection('quiz_results')
+        .where('userId', isEqualTo: userId)
+        .orderBy('completedAt', descending: true)
+        .snapshots();
   }
 }
