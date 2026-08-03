@@ -49,39 +49,22 @@ class FirebaseService {
     String? bio,
   }) async {
     try {
-      final normalizedUsername = username.toLowerCase().trim();
-
-      if (!await isUsernameUnique(normalizedUsername)) {
-        return 'That username is already taken. Please choose another one.';
-      }
-
-      UserCredential result = await _auth.createUserWithEmailAndPassword(
-        email: email.trim(),
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
         password: password,
       );
 
-      final user = result.user;
-      if (user == null) {
-        return 'Unable to create account. Please try again.';
-      }
-
-      await user.sendEmailVerification();
-
-      // Automatically place the new user into a group for their course
-      final assignedGroupId = await _assignUserToGroup(user.uid, course.trim());
-
-      await _usersRef.doc(user.uid).set({
-        'uid': user.uid,
-        'fullName': fullName.trim(),
-        'username': normalizedUsername,
-        'email': email.trim(),
-        'bio': bio?.trim() ?? 'Student focused on collaborative learning.',
-        'course': course.trim(),
-        'joinedGroups': [assignedGroupId],
+      await _usersRef.doc(userCredential.user!.uid).set({
+        'fullName': fullName,
+        'username': username.toLowerCase().trim(),
+        'email': email,
+        'course': course,
+        'bio': bio ?? 'Student focused on collaborative learning.',
+        'photoUrl': null,
+        'createdAt': DateTime.now(),
+        'updatedAt': DateTime.now(),
         'uploadCount': 0,
-        'emailVerified': user.emailVerified,
-        'usernameVerified': false,
-        'createdAt': FieldValue.serverTimestamp(),
+        'joinedGroups': [],
       });
 
       return null;
@@ -95,55 +78,14 @@ class FirebaseService {
     required String password,
   }) async {
     try {
-      final trimmedInput = emailOrUsername.trim();
-      String loginEmail = trimmedInput;
-      DocumentSnapshot<Map<String, dynamic>>? profileDoc;
-
-      if (!trimmedInput.contains('@')) {
-        profileDoc = await getUserByUsername(trimmedInput);
-        if (profileDoc == null) {
-          return 'Username not found. Please use a registered email or verified username.';
-        }
-        final profileData = profileDoc.data();
-        if (profileData == null || !profileData.containsKey('email')) {
-          return 'Invalid user record. Please contact support.';
-        }
-        if (profileData['usernameVerified'] != true) {
-          return 'Please verify your username by confirming your email first.';
-        }
-        loginEmail = profileData['email'] as String;
+      String email = emailOrUsername;
+      if (!emailOrUsername.contains('@')) {
+        final user = await getUserByUsername(emailOrUsername);
+        if (user == null) return 'User not found';
+        email = user['email'];
       }
 
-      final UserCredential result = await _auth.signInWithEmailAndPassword(
-        email: loginEmail,
-        password: password,
-      );
-
-      final user = result.user;
-      if (user == null) {
-        return 'Login failed. Please try again.';
-      }
-
-      await user.reload();
-
-      if (!user.emailVerified) {
-        await user.sendEmailVerification();
-        await _auth.signOut();
-        return 'Email is not verified. A verification link has been resent to your inbox.';
-      }
-
-      profileDoc ??= await _usersRef.doc(user.uid).get();
-
-      if (profileDoc.exists) {
-        final profileData = profileDoc.data()!;
-        if (profileData['usernameVerified'] != true) {
-          await _usersRef.doc(user.uid).update({
-            'usernameVerified': true,
-            'emailVerified': true,
-          });
-        }
-      }
-
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
       return null;
     } catch (e) {
       return e.toString();
@@ -151,272 +93,191 @@ class FirebaseService {
   }
 
   // ########################################################
-  // # GROUP ASSIGNMENT
+  // # USER PROFILE METHODS
   // ########################################################
 
-  Future<String> _assignUserToGroup(String userId, String course) async {
-    final openGroupQuery = await _groupsRef
-        .where('course', isEqualTo: course)
-        .where('memberCount', isLessThan: _maxGroupMembers)
-        .orderBy('memberCount')
-        .limit(1)
-        .get();
-
-    if (openGroupQuery.docs.isNotEmpty) {
-      final groupDoc = openGroupQuery.docs.first;
-      await groupDoc.reference.update({
-        'memberIds': FieldValue.arrayUnion([userId]),
-        'memberCount': FieldValue.increment(1),
-      });
-      return groupDoc.id;
+  Future<Map<String, dynamic>?> getUserProfile() async {
+    try {
+      final doc = await _usersRef.doc(_auth.currentUser!.uid).get();
+      return doc.data();
+    } catch (e) {
+      return null;
     }
-
-    final courseGroupCount = await _groupsRef
-        .where('course', isEqualTo: course)
-        .count()
-        .get();
-    final groupNumber = (courseGroupCount.count ?? 0) + 1;
-
-    final newGroupRef = await _groupsRef.add({
-      'name': '$course - Group $groupNumber',
-      'course': course,
-      'memberIds': [userId],
-      'memberCount': 1,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
-    return newGroupRef.id;
   }
 
-  // Allow a user to switch to a different course (moves them to a new group too)
+  Future<void> updateUserProfile(Map<String, dynamic> data) async {
+    data['updatedAt'] = DateTime.now();
+    await _usersRef.doc(_auth.currentUser!.uid).update(data);
+  }
+
+  Future<String> uploadProfilePicture(
+      Uint8List fileBytes, String fileName) async {
+    try {
+      final ref = _storage.ref(
+          'profile_pictures/${_auth.currentUser!.uid}/$fileName');
+      await ref.putData(fileBytes);
+      return await ref.getDownloadURL();
+    } catch (e) {
+      throw Exception('Failed to upload profile picture: $e');
+    }
+  }
+
+  // ########################################################
+  // # GROUP METHODS
+  // ########################################################
+
+  Future<void> createGroup(String name, String course) async {
+    try {
+      await _groupsRef.add({
+        'name': name,
+        'course': course,
+        'members': [_auth.currentUser!.uid],
+        'createdAt': DateTime.now(),
+        'createdBy': _auth.currentUser!.uid,
+      });
+    } catch (e) {
+      throw Exception('Failed to create group: $e');
+    }
+  }
+
+  Stream<QuerySnapshot> getUserGroups() {
+    return _groupsRef
+        .where('members', arrayContains: _auth.currentUser!.uid)
+        .snapshots();
+  }
+
+  Future<void> joinGroup(String groupId) async {
+    try {
+      await _groupsRef.doc(groupId).update({
+        'members': FieldValue.arrayUnion([_auth.currentUser!.uid]),
+      });
+
+      await _usersRef.doc(_auth.currentUser!.uid).update({
+        'joinedGroups': FieldValue.arrayUnion([groupId]),
+      });
+    } catch (e) {
+      throw Exception('Failed to join group: $e');
+    }
+  }
+
   Future<void> switchCourse({
     required String uid,
     required String newCourse,
   }) async {
-    final userDoc = await _usersRef.doc(uid).get();
-    final data = userDoc.data();
-    final oldGroups = List<String>.from(data?['joinedGroups'] ?? []);
-
-    // Remove user from their old groups
-    for (final groupId in oldGroups) {
-      await _groupsRef.doc(groupId).update({
-        'memberIds': FieldValue.arrayRemove([uid]),
-        'memberCount': FieldValue.increment(-1),
+    try {
+      await _usersRef.doc(uid).update({
+        'course': newCourse,
+        'joinedGroups': [],
+        'updatedAt': DateTime.now(),
       });
+    } catch (e) {
+      throw Exception('Failed to switch course: $e');
     }
-
-    final newGroupId = await _assignUserToGroup(uid, newCourse.trim());
-
-    await _usersRef.doc(uid).update({
-      'course': newCourse.trim(),
-      'joinedGroups': [newGroupId],
-    });
   }
 
   // ########################################################
-  // # PROFILE / HOME SCREEN METHODS
+  // # MESSAGING METHODS
   // ########################################################
 
-  Future<Map<String, dynamic>?> getUserProfile() async {
-    final user = _auth.currentUser;
-    if (user == null) return null;
-    final doc = await _usersRef.doc(user.uid).get();
-    return doc.data();
-  }
-
-  Future<void> updateUserProfile(Map<String, dynamic> updates) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-    await _usersRef.doc(user.uid).update(updates);
-  }
-
-  Future<String> uploadProfilePicture({
-    required String userId,
-    required Uint8List bytes,
-    required String fileName,
-  }) async {
-    final ref = _storage.ref().child('profile_pictures/$userId/$fileName');
-    await ref.putData(bytes);
-    final url = await ref.getDownloadURL();
-    await _usersRef.doc(userId).update({'photoUrl': url});
-    return url;
-  }
-
-  // Marks the current user as recently active (used by progress/streak tracking)
-  Future<void> markActiveNow() async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-    await _usersRef.doc(user.uid).update({
-      'lastActiveAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> getUserJoinedGroups(String userId) {
-    return _groupsRef
-        .where('memberIds', arrayContains: userId)
-        .snapshots();
-  }
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> getNotesForGroup(String groupId) {
-    return _firestore
-        .collection('notes')
-        .where('groupId', isEqualTo: groupId)
-        .orderBy('uploadedAt', descending: true)
-        .snapshots();
-  }
-
-  // Saves a new note/past paper shared to a group
-  Future<void> saveNote({
-    required String groupId,
-    required String userId,
-    required String title,
-    String? content,
-    String? fileUrl,
-  }) async {
-    await _firestore.collection('notes').add({
-      'groupId': groupId,
-      'userId': userId,
-      'title': title,
-      'content': content,
-      'fileUrl': fileUrl,
-      'ratingSum': 0,
-      'ratingCount': 0,
-      'raters': {},
-      'flagCount': 0,
-      'uploadedAt': FieldValue.serverTimestamp(),
-    });
-    await _usersRef.doc(userId).update({'uploadCount': FieldValue.increment(1)});
-  }
-
-  // ########################################################
-  // # PARTNER DISCOVERY
-  // ########################################################
-
-  // Streams other students enrolled in the same course, excluding the current user
-  Stream<QuerySnapshot<Map<String, dynamic>>> discoverUsersByCourse(
-      String course, String currentUserId) {
-    return _usersRef
-        .where('course', isEqualTo: course)
-        .snapshots();
-    // Note: excludeUserId is filtered client-side in the UI since Firestore
-    // doesn't support a "not equal to" alongside another equality filter here.
-  }
-
-  // ########################################################
-  // # IN-APP GROUP MESSAGING
-  // ########################################################
-
-  // Deterministic conversation ID for two users, regardless of call order
-  String getConversationId(String userIdA, String userIdB) {
-    final sorted = [userIdA, userIdB]..sort();
-    return '${sorted[0]}_${sorted[1]}';
-  }
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> getUserConversations(String uid) {
-    return _firestore
-        .collection('conversations')
-        .where('participants', arrayContains: uid)
-        .orderBy('lastMessageAt', descending: true)
-        .snapshots();
+  String getConversationId(String userId1, String userId2) {
+    List<String> ids = [userId1, userId2];
+    ids.sort();
+    return ids.join('_');
   }
 
   Future<void> sendMessage({
-    required String conversationId,
-    required String senderId,
+    required String receiverId,
+    required String receiverName,
     required String text,
   }) async {
-    final conversationRef = _firestore.collection('conversations').doc(conversationId);
+    try {
+      final conversationId = getConversationId(
+          _auth.currentUser!.uid, receiverId);
 
-    await conversationRef.collection('messages').add({
-      'senderId': senderId,
-      'text': text,
-      'sentAt': FieldValue.serverTimestamp(),
-    });
+      final senderProfile = await getUserProfile();
+      final senderName = senderProfile?['fullName'] ?? 'Student';
 
-    await conversationRef.set({
-      'participants': conversationId.split('_'),
-      'lastMessage': text,
-      'lastMessageAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+      await _firestore
+          .collection('conversations')
+          .doc(conversationId)
+          .collection('messages')
+          .add({
+        'senderId': _auth.currentUser!.uid,
+        'senderName': senderName,
+        'receiverId': receiverId,
+        'receiverName': receiverName,
+        'text': text,
+        'timestamp': DateTime.now(),
+      });
+
+      await _firestore
+          .collection('conversations')
+          .doc(conversationId)
+          .set({
+        'participants': [_auth.currentUser!.uid, receiverId],
+        'participantNames': {
+          _auth.currentUser!.uid: senderName,
+          receiverId: receiverName,
+        },
+        'lastMessageTime': DateTime.now(),
+        'text': text,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      throw Exception('Failed to send message: $e');
+    }
   }
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> getMessagesForConversation(
-      String conversationId) {
+  Stream<QuerySnapshot> getMessagesForConversation(String conversationId) {
     return _firestore
         .collection('conversations')
         .doc(conversationId)
         .collection('messages')
-        .orderBy('sentAt', descending: false)
+        .orderBy('timestamp', descending: false)
+        .snapshots();
+  }
+
+  Stream<QuerySnapshot> getUserConversations(String userId) {
+    return _firestore
+        .collection('conversations')
+        .where('participants', arrayContains: userId)
+        .orderBy('lastMessageTime', descending: true)
         .snapshots();
   }
 
   // ########################################################
-  // # RATINGS AND CONTENT VERIFICATION
+  // # NOTE/UPLOAD METHODS
   // ########################################################
 
-  Future<void> rateNote({
-    required String noteId,
+  Future<void> saveNote({
+    required String groupId,
     required String userId,
-    required int rating,
+    required String title,
+    required String content,
   }) async {
-    assert(rating >= 1 && rating <= 5, 'Rating must be between 1 and 5');
-
-    final noteRef = _firestore.collection('notes').doc(noteId);
-
-    await _firestore.runTransaction((transaction) async {
-      final snapshot = await transaction.get(noteRef);
-      final data = snapshot.data() as Map<String, dynamic>? ?? {};
-      final raters = Map<String, dynamic>.from(data['raters'] ?? {});
-
-      int sum = (data['ratingSum'] ?? 0) as int;
-      int count = (data['ratingCount'] ?? 0) as int;
-
-      if (raters.containsKey(userId)) {
-        final previousRating = raters[userId] as int;
-        sum = sum - previousRating + rating;
-      } else {
-        sum += rating;
-        count += 1;
-      }
-      raters[userId] = rating;
-
-      transaction.update(noteRef, {
-        'ratingSum': sum,
-        'ratingCount': count,
-        'raters': raters,
+    try {
+      await _groupsRef.doc(groupId).collection('notes').add({
+        'title': title,
+        'content': content,
+        'userId': userId,
+        'createdAt': DateTime.now(),
       });
-    });
-  }
 
-  Future<void> flagNote({
-    required String noteId,
-    required String userId,
-    required String reason,
-  }) async {
-    final noteRef = _firestore.collection('notes').doc(noteId);
-
-    await noteRef.collection('flags').doc(userId).set({
-      'reason': reason.trim(),
-      'flaggedAt': FieldValue.serverTimestamp(),
-    });
-
-    await noteRef.update({
-      'flagCount': FieldValue.increment(1),
-    });
-  }
-
-  Stream<DocumentSnapshot<Map<String, dynamic>>> streamNote(String noteId) {
-    return _firestore.collection('notes').doc(noteId).snapshots();
+      await _usersRef.doc(userId).update({
+        'uploadCount': FieldValue.increment(1),
+      });
+    } catch (e) {
+      throw Exception('Failed to save note: $e');
+    }
   }
 
   // ########################################################
   // # QUIZ METHODS
   // ########################################################
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> getQuizzesForCourse(String course) {
+  Stream<QuerySnapshot> getQuizzesForCourse(String course) {
     return _firestore
         .collection('quizzes')
-        .where('courseId', isEqualTo: course)
+        .where('course', isEqualTo: course)
         .snapshots();
   }
 
@@ -426,12 +287,42 @@ class FirebaseService {
     required int score,
     required int totalQuestions,
   }) async {
-    await _firestore.collection('quiz_results').add({
-      'userId': userId,
-      'quizId': quizId,
-      'score': score,
-      'totalQuestions': totalQuestions,
-      'completedAt': FieldValue.serverTimestamp(),
-    });
+    try {
+      await _usersRef.doc(userId).collection('quizzes').add({
+        'quizId': quizId,
+        'score': score,
+        'totalQuestions': totalQuestions,
+        'percentage': (score / totalQuestions * 100).toInt(),
+        'completedAt': DateTime.now(),
+      });
+    } catch (e) {
+      throw Exception('Failed to save quiz progress: $e');
+    }
+  }
+
+  // ########################################################
+  // # DISCOVER METHODS
+  // ########################################################
+
+  Stream<QuerySnapshot> discoverUsersByCourse(
+      String course, String currentUserId) {
+    return _usersRef
+        .where('course', isEqualTo: course)
+        .where(FieldPath.documentId, isNotEqualTo: currentUserId)
+        .snapshots();
+  }
+
+  // ########################################################
+  // # ACTIVITY METHODS
+  // ########################################################
+
+  Future<void> markActiveNow() async {
+    try {
+      await _usersRef.doc(_auth.currentUser!.uid).update({
+        'lastActive': DateTime.now(),
+      });
+    } catch (e) {
+      // Silently fail for activity tracking
+    }
   }
 }
