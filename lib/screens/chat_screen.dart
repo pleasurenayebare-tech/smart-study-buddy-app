@@ -39,13 +39,23 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _isSending = true);
     _textController.clear();
 
-    await _service.sendMessage(
-      receiverId: widget.otherUserId,
-      receiverName: widget.otherUserName,
-      text: text,
-    );
-
-    setState(() => _isSending = false);
+    try {
+      await _service.sendMessage(
+        conversationId: _conversationId,
+        senderId: _myUid,
+        message: text,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error sending message: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSending = false);
+      }
+    }
   }
 
   @override
@@ -93,7 +103,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   itemBuilder: (context, i) {
                     final data = docs[i].data();
                     final isMe = data['senderId'] == _myUid;
-                    final text = data['text'] ?? '';
+                    final text = data['message'] ?? '';
 
                     return Align(
                       alignment:
@@ -166,5 +176,12 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 }
