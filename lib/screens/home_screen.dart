@@ -467,6 +467,30 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _emptyStateCard(String message) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2))],
+        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+      ),
+      child: Center(
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 13,
+            color: Colors.grey,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showFlagDialog(String noteId) {
     final reasonController = TextEditingController();
     showDialog(
@@ -482,4 +506,31 @@ class _HomeScreenState extends State<HomeScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
-         
+          ),
+          TextButton(
+            onPressed: () async {
+              if (reasonController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please provide a reason')),
+                );
+                return;
+              }
+              await _firebaseService.flagNote(
+                noteId: noteId,
+                userId: _currentUserId,
+                reason: reasonController.text,
+              );
+              if (mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Note flagged successfully')),
+                );
+              }
+            },
+            child: const Text('Flag'),
+          ),
+        ],
+      ),
+    );
+  }
+}
