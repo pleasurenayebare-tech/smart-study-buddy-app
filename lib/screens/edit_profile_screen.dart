@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'dart:io';
 import '../firebase_service.dart';
 import '../theme.dart';
 
@@ -37,18 +36,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     setState(() => _isUploadingPhoto = true);
     try {
-      // Create a temporary file from bytes
       final bytes = result.files.single.bytes!;
       final fileName = result.files.single.name;
-      final tempDir = Directory.systemTemp;
-      final tempFile = File('${tempDir.path}/$fileName');
-      await tempFile.writeAsBytes(bytes);
 
-      final url = await _service.uploadProfilePicture(tempFile);
+      final url = await _service.uploadProfilePicture(bytes, fileName);
       setState(() => _photoUrl = url);
-
-      // Clean up temp file
-      await tempFile.delete();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
