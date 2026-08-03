@@ -145,6 +145,10 @@ class FirebaseService {
     }
   }
 
+  Future<void> signOut() async {
+    await _auth.signOut();
+  }
+
   // ########################################################
   // # GROUP ASSIGNMENT
   // ########################################################
@@ -187,6 +191,14 @@ class FirebaseService {
     return newGroupRef.id;
   }
 
+  Future<void> switchCourse({required String uid, required String newCourse}) async {
+    final assignedGroupId = await _assignUserToGroup(uid, newCourse.trim());
+    await _usersRef.doc(uid).update({
+      'course': newCourse.trim(),
+      'joinedGroups': FieldValue.arrayUnion([assignedGroupId]),
+    });
+  }
+
   // ########################################################
   // # PROFILE / HOME SCREEN METHODS
   // ########################################################
@@ -213,6 +225,33 @@ class FirebaseService {
         .where('groupId', isEqualTo: groupId)
         .orderBy('uploadedAt', descending: true)
         .snapshots();
+  }
+
+  // Update user profile with new data
+  Future<void> updateUserProfile(Map<String, dynamic> updates) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('No user logged in');
+    await _usersRef.doc(user.uid).update(updates);
+  }
+
+  // Upload profile picture and return URL
+  Future<String> uploadProfilePicture(File imageFile) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('No user logged in');
+    
+    final fileName = 'profile_pictures/${user.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final ref = FirebaseStorage.instance.ref().child(fileName);
+    await ref.putFile(imageFile);
+    return await ref.getDownloadURL();
+  }
+
+  // Mark user as active now (for progress tracking)
+  void markActiveNow() {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    _usersRef.doc(user.uid).update({
+      'lastActiveAt': FieldValue.serverTimestamp(),
+    });
   }
 
   // ########################################################
@@ -279,6 +318,102 @@ class FirebaseService {
   // Stream a single note's document so rating/flag counts update live in the UI
   Stream<DocumentSnapshot<Map<String, dynamic>>> streamNote(String noteId) {
     return _firestore.collection('notes').doc(noteId).snapshots();
+  }
+
+  // ########################################################
+  // # NOTE UPLOAD METHODS
+  // ########################################################
+
+  Future<void> saveNote({
+    required String groupId,
+    required String userId,
+    required String title,
+    required String subject,
+    required File? noteFile,
+  }) async {
+    String? fileUrl;
+    if (noteFile != null) {
+      final fileName = 'notes/${groupId}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final ref = FirebaseStorage.instance.ref().child(fileName);
+      await ref.putFile(noteFile);
+      fileUrl = await ref.getDownloadURL();
+    }
+
+    await _firestore.collection('notes').add({
+      'groupId': groupId,
+      'userId': userId,
+      'title': title,
+      'subject': subject,
+      'fileUrl': fileUrl,
+      'uploadedAt': FieldValue.serverTimestamp(),
+      'ratingSum': 0,
+      'ratingCount': 0,
+      'flagCount': 0,
+      'raters': {},
+    });
+  }
+
+  // ########################################################
+  // # MESSAGING METHODS
+  // ########################################################
+
+  String getConversationId(String userId1, String userId2) {
+    final ids = [userId1, userId2]..sort();
+    return ids.join('_');
+  }
+
+  Future<void> sendMessage({
+    required String conversationId,
+    required String senderId,
+    required String message,
+  }) async {
+    await _firestore
+        .collection('conversations')
+        .doc(conversationId)
+        .collection('messages')
+        .add({
+      'senderId': senderId,
+      'message': message,
+      'sentAt': FieldValue.serverTimestamp(),
+    });
+
+    // Update conversation metadata
+    await _firestore.collection('conversations').doc(conversationId).set({
+      'lastMessage': message,
+      'lastMessageAt': FieldValue.serverTimestamp(),
+      'lastSenderId': senderId,
+    }, SetOptions(merge: true));
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> getUserConversations(String userId) {
+    return _firestore
+        .collection('conversations')
+        .where('participants', arrayContains: userId)
+        .orderBy('lastMessageAt', descending: true)
+        .snapshots();
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> getMessagesForConversation(String conversationId) {
+    return _firestore
+        .collection('conversations')
+        .doc(conversationId)
+        .collection('messages')
+        .orderBy('sentAt', descending: true)
+        .snapshots();
+  }
+
+  // ########################################################
+  // # DISCOVERY METHODS
+  // ########################################################
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> discoverUsersByCourse(
+    String course,
+    String currentUserId,
+  ) {
+    return _usersRef
+        .where('course', isEqualTo: course)
+        .where('uid', isNotEqualTo: currentUserId)
+        .snapshots();
   }
 
   // ########################################################
