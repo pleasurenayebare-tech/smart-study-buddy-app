@@ -18,18 +18,18 @@ class UploadScreen extends StatefulWidget {
 
 class _UploadScreenState extends State<UploadScreen> {
   final _titleController = TextEditingController();
-  final _contentController = TextEditingController();
+  final _subjectController = TextEditingController();
   bool _isLoading = false;
   final _firebaseService = FirebaseService();
 
   Future<void> _handleSave() async {
     final title = _titleController.text.trim();
-    final content = _contentController.text.trim();
+    final subject = _subjectController.text.trim();
 
-    if (title.isEmpty || content.isEmpty) {
+    if (title.isEmpty || subject.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please add a title and some content or a link.'),
+          content: Text('Please add a title and subject.'),
           backgroundColor: AppTheme.error,
         ),
       );
@@ -43,7 +43,8 @@ class _UploadScreenState extends State<UploadScreen> {
         groupId: widget.groupId,
         userId: widget.userId,
         title: title,
-        content: content,
+        subject: subject,
+        noteFile: null,
       );
 
       if (!mounted) return;
@@ -106,13 +107,13 @@ class _UploadScreenState extends State<UploadScreen> {
             const SizedBox(height: 24),
             
             const Text(
-              'Content or Link',
+              'Subject',
               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
             ),
             const SizedBox(height: 8),
             TextField(
-              controller: _contentController,
-              maxLines: 8,
+              controller: _subjectController,
+              maxLines: 4,
               decoration: InputDecoration(
                 hintText: 'Paste your notes here, or a link to your PDF...',
                 alignLabelWithHint: true,
@@ -136,5 +137,12 @@ class _UploadScreenState extends State<UploadScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _subjectController.dispose();
+    super.dispose();
   }
 }
