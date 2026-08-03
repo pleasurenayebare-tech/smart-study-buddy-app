@@ -38,20 +38,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
           final docs = snapshot.data!.docs;
 
-          // Group messages by conversationId, keeping only the most recent
-          // message per conversation for the list preview.
-          final Map<String, Map<String, dynamic>> latestByConversation = {};
-          for (final doc in docs) {
-            final data = doc.data();
-            final convId = data['conversationId'] as String;
-            if (!latestByConversation.containsKey(convId)) {
-              latestByConversation[convId] = data;
-            }
-          }
-
-          final conversations = latestByConversation.values.toList();
-
-          if (conversations.isEmpty) {
+          if (docs.isEmpty) {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
@@ -66,16 +53,21 @@ class _MessagesScreenState extends State<MessagesScreen> {
 
           return ListView.builder(
             padding: const EdgeInsets.all(8),
-            itemCount: conversations.length,
+            itemCount: docs.length,
             itemBuilder: (context, i) {
-              final data = conversations[i];
-              final participants = List<String>.from(data['participants']);
-              final otherUserId =
-                  participants.firstWhere((id) => id != _myUid);
-              final names = Map<String, dynamic>.from(
-                  data['participantNames'] ?? {});
-              final otherUserName = names[otherUserId] ?? 'Student';
-              final lastMessage = data['text'] ?? '';
+              final data = docs[i].data();
+              final lastMessage = data['lastMessage'] ?? '';
+              final lastSenderId = data['lastSenderId'] ?? '';
+
+              // Extract other user ID from document ID (conversationId format: uid1_uid2)
+              final conversationId = docs[i].id;
+              final parts = conversationId.split('_');
+              if (parts.length != 2) {
+                return const SizedBox.shrink();
+              }
+
+              final otherUserId = parts[0] == _myUid ? parts[1] : parts[0];
+              final senderLabel = lastSenderId == _myUid ? 'You: ' : '';
 
               return Card(
                 margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
@@ -83,14 +75,16 @@ class _MessagesScreenState extends State<MessagesScreen> {
                   leading: CircleAvatar(
                     backgroundColor: AppTheme.info,
                     child: Text(
-                      otherUserName.isNotEmpty ? otherUserName[0] : '?',
+                      otherUserId.isNotEmpty ? otherUserId[0].toUpperCase() : '?',
                       style: const TextStyle(color: Colors.white),
                     ),
                   ),
-                  title: Text(otherUserName,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(
+                    'Chat',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   subtitle: Text(
-                    lastMessage,
+                    '$senderLabel$lastMessage',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -100,7 +94,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                       MaterialPageRoute(
                         builder: (_) => ChatScreen(
                           otherUserId: otherUserId,
-                          otherUserName: otherUserName,
+                          otherUserName: 'Study Partner',
                         ),
                       ),
                     );
